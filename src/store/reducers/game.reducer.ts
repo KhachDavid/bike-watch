@@ -178,13 +178,19 @@ const initialState: GameState = {
 const calculateRiskPercentage = (street: Street): number => {
   // Comprehensive risk calculation incorporating all factors
   
+  // Safety checks to prevent NaN
+  if (!street || !street.bikesPerDay || !street.theftsPerMonth || !street.lightingScore) {
+    console.warn('Invalid street data in calculateRiskPercentage:', street);
+    return 5.0; // Return safe default
+  }
+  
   // 1. Base theft rate from historical data
-  const monthlyBikes = street.bikesPerDay * 30;
-  const baseTheftRate = (street.theftsPerMonth / monthlyBikes) * 100;
+  const monthlyBikes = (street.bikesPerDay || 1) * 30;
+  const baseTheftRate = ((street.theftsPerMonth || 0) / monthlyBikes) * 100;
   
   // 2. Lighting factor: Poor lighting increases risk
   // Scale: 10 = best (no increase), 1 = worst (+45% increase)
-  const lightingMultiplier = 1 + ((10 - street.lightingScore) * 0.05);
+  const lightingMultiplier = 1 + ((10 - (street.lightingScore || 5)) * 0.05);
   
   // 3. Traffic factor: More foot traffic = safer (natural surveillance)
   const trafficMultiplier = 
@@ -194,7 +200,7 @@ const calculateRiskPercentage = (street: Street): number => {
     1.15;                                        // 15% riskier (Low traffic)
   
   // 4. Investment factor: Each $10k invested reduces risk by ~5%
-  const investmentMultiplier = Math.max(0.5, 1 - (street.investment / 10000) * 0.05);
+  const investmentMultiplier = Math.max(0.5, 1 - ((street.investment || 0) / 10000) * 0.05);
   
   // 5. Surveillance factor: Cameras provide significant deterrent
   // Scale: 10 = excellent coverage (50% risk reduction), 0 = no coverage
@@ -203,6 +209,12 @@ const calculateRiskPercentage = (street: Street): number => {
   
   // Calculate final risk with all factors
   const risk = baseTheftRate * lightingMultiplier * trafficMultiplier * investmentMultiplier * surveillanceMultiplier;
+  
+  // Ensure we never return NaN
+  if (isNaN(risk) || !isFinite(risk)) {
+    console.warn('NaN detected in risk calculation for street:', street.name);
+    return 5.0; // Safe default
+  }
   
   return Math.max(1, Math.min(15, Math.round(risk * 10) / 10));
 };
@@ -215,11 +227,17 @@ const recalculateStreetFromInvestments = (
   street: Street,
   allInvestments: any[]
 ): Street => {
+  // Safety check
+  if (!street) {
+    console.warn('Invalid street in recalculateStreetFromInvestments');
+    return street;
+  }
+  
   // Start with base values
   let updatedStreet = { ...street };
   
-  // Reset to base values
-  updatedStreet.lightingScore = street.baseLightingScore || street.lightingScore;
+  // Reset to base values with safety checks
+  updatedStreet.lightingScore = street.baseLightingScore || street.lightingScore || 5;
   updatedStreet.surveillanceScore = 0;
   updatedStreet.cameraCount = 0;
   updatedStreet.cameras = [];
@@ -340,9 +358,25 @@ export default function gameReducer(state = initialState, action: any): GameStat
       return initialState;
 
     case GAME_ACTION_TYPES.LOAD_STREETS_DATA:
+      // Ensure all streets have required fields with defaults
+      const loadedStreets = (action.payload || []).map((street: Street) => ({
+        ...street,
+        investment: street.investment || 0,
+        lightingScore: street.lightingScore || 5,
+        baseLightingScore: street.baseLightingScore || street.lightingScore || 5,
+        surveillanceScore: street.surveillanceScore || 0,
+        cameraCount: street.cameraCount || 0,
+        cameras: street.cameras || [],
+        bikesPerDay: street.bikesPerDay || 100,
+        theftsPerMonth: street.theftsPerMonth || 1,
+        theftsLastMonth: street.theftsLastMonth || street.theftsPerMonth || 1,
+        riskPercentage: street.riskPercentage || 5,
+        historicalRisk: street.historicalRisk || street.riskPercentage || 5
+      }));
+      
       return {
         ...state,
-        streets: action.payload
+        streets: loadedStreets
       };
 
     case GAME_ACTION_TYPES.SELECT_STREET:
@@ -812,7 +846,29 @@ export default function gameReducer(state = initialState, action: any): GameStat
       };
 
     case GAME_ACTION_TYPES.RESET_GAME:
-      return initialState;
+      // Reset game but preserve loaded streets data
+      // Reset all streets to their original state (clear investments and recalculate)
+      const resetStreets = state.streets.map(street => ({
+        ...street,
+        investment: 0,
+        lightingScore: street.baseLightingScore || street.lightingScore,
+        surveillanceScore: 0,
+        cameraCount: 0,
+        cameras: [],
+        // Recalculate risk with no investments
+        riskPercentage: calculateRiskPercentage({
+          ...street,
+          investment: 0,
+          lightingScore: street.baseLightingScore || street.lightingScore,
+          surveillanceScore: 0
+        })
+      }));
+      
+      return {
+        ...initialState,
+        streets: resetStreets, // Preserve the streets data
+        detectiveMarketplace: generateDetectiveMarketplace() // Generate fresh marketplace
+      };
 
     case GAME_ACTION_TYPES.TOGGLE_CAMERA_MODE:
     case GAME_ACTION_TYPES.TOGGLE_PLACEMENT_MODE:
