@@ -20,11 +20,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      console.log('🚀 Starting data load...');
       dispatch(initializeGame());
+      console.log('✅ Game initialized');
       
       try {
+        console.log('📡 Fetching real SF data...');
         // Fetch real SF data dynamically
         const realData = await processRealSFData();
+        console.log('✅ Real data fetched:', realData.length, 'streets');
         
         // Convert to Street format and load into state
         const streets = realData.map(street => ({
@@ -43,10 +47,16 @@ const App: React.FC = () => {
           longitude: street.longitude
         }));
         
+        console.log('🗺️  Loading streets into Redux...');
         dispatch(loadStreetsData(streets));
+        console.log('✅ Streets loaded into Redux');
+        
+        console.log('✅ Setting dataLoaded = true');
         setDataLoaded(true);
+        console.log('✅ Data load complete!');
       } catch (error) {
-        console.error('Failed to load SF data:', error);
+        console.error('❌ Failed to load SF data:', error);
+        console.log('⚠️ Setting dataLoaded = true anyway');
         setDataLoaded(true);
       }
     };
@@ -54,9 +64,14 @@ const App: React.FC = () => {
     loadData();
   }, [dispatch]);
 
+  console.log('📊 Current dataLoaded state:', dataLoaded);
+  
   if (!dataLoaded) {
+    console.log('⏳ Showing DataLoader component');
     return <DataLoader onDataLoaded={() => {}} />;
   }
+  
+  console.log('🎮 Rendering main game app');
 
   return (
     <div className="app">

@@ -204,7 +204,7 @@
     border: 2px solid var(--gray-300) !important;
     border-radius: var(--radius-md) !important;
     background: var(--white) !important;
-    transition: all 0.2s ease;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); // Faster, smoother easing
     text-align: left !important;
     width: 100% !important;
     box-sizing: border-box !important;
@@ -215,6 +215,15 @@
       transform: translateY(-1px);
       box-shadow: var(--shadow-sm);
     }
+    
+    // Active state - immediate feedback when tapping/clicking
+    &:active:not(:disabled) {
+      border-color: var(--primary-700);
+      border-width: 3px !important;
+      background: var(--primary-100);
+      transform: scale(0.98);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
 
     &:disabled {
       opacity: 0.5;
@@ -224,12 +233,32 @@
 
     &.selected {
       border-color: var(--primary-600);
-      background: var(--primary-50);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      border-width: 3px !important; // Thicker border (was 2px)
+      background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-50) 100%); // Stronger blue gradient
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 4px 6px -1px rgba(59, 130, 246, 0.3); // Stronger glow + shadow
+      transform: scale(1.02); // Slight scale up
+      
+      .option-header {
+        .option-name {
+          color: var(--primary-700); // Darker blue text
+          font-weight: 700; // Bolder
+        }
+        
+        svg {
+          color: var(--primary-700); // Darker icon
+          transform: scale(1.15); // Slightly bigger icon
+        }
+      }
+      
+      .option-cost {
+        color: var(--primary-800) !important; // Much darker blue
+        font-weight: 800 !important; // Extra bold
+      }
     }
     
     &.camera-option.selected {
-      background: linear-gradient(135deg, var(--primary-50) 0%, var(--purple-50) 100%);
+      background: linear-gradient(135deg, var(--primary-100) 0%, var(--purple-100) 100%); // Stronger gradient
+      box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.2), 0 4px 6px -1px rgba(168, 85, 247, 0.3); // Purple glow
     }
 
     .option-content {
@@ -246,6 +275,7 @@
       svg {
         color: var(--primary-600);
         font-size: 1.25rem;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); // Smooth icon transitions
       }
       
       .option-name {
@@ -253,6 +283,7 @@
         font-weight: 600;
         font-size: 0.9375rem;
         color: var(--gray-900);
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); // Smooth text transitions
       }
       
       .coverage-badge {
@@ -280,6 +311,7 @@
         font-weight: 700;
         font-size: 1rem;
         color: var(--primary-700);
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); // Smooth cost transitions
       }
       
       .option-detail {
@@ -314,6 +346,67 @@
       .option-footer {
         .option-cost {
           font-size: 0.9375rem;
+        }
+      }
+    }
+  }
+}
+
+// Mobile: Even smaller for tight space
+@media (max-width: 767px) {
+  .investment-panel {
+    .card-header {
+      padding: var(--space-4);
+    }
+    
+    .card-content {
+      padding: var(--space-4);
+    }
+    
+    .investment-category {
+      margin-bottom: var(--space-4);
+      
+      .category-title {
+        font-size: 0.875rem;
+      }
+      
+      .category-description {
+        font-size: 0.75rem;
+      }
+    }
+    
+    .investment-option {
+      padding: var(--space-2) !important;
+      
+      .option-content {
+        gap: var(--space-1);
+      }
+      
+      .option-header {
+        svg {
+          font-size: 1rem;
+        }
+        
+        .option-name {
+          font-size: 0.8125rem;
+        }
+      }
+      
+      .option-description {
+        font-size: 0.75rem;
+        margin-left: 28px;
+      }
+      
+      .option-footer {
+        margin-left: 28px;
+        margin-top: 0;
+        
+        .option-cost {
+          font-size: 0.875rem;
+        }
+        
+        .option-detail {
+          font-size: 0.6875rem;
         }
       }
     }

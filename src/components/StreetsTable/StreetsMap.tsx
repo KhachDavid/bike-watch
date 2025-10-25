@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents } from 'react-leaflet';
 import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
-import { Videocam, Close, Lightbulb, Lock, Group, LocalPolice, Layers, Build, Delete } from '@mui/icons-material';
+import { Videocam, Lightbulb, Lock, Group, LocalPolice, Layers, Build, Delete, DeleteOutline } from '@mui/icons-material';
 import L from 'leaflet';
 import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode, repairInvestment, removeDamagedInvestment } from '../../store/actions/game.actions';
 import { RootState, Camera, PlacedInvestment } from '../../types';
@@ -418,8 +418,9 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                         size="small"
                         onClick={(e) => handleRemoveInvestment(investment.id, e)}
                         className="remove-camera-btn"
+                        title="Remove investment"
                       >
-                        <Close fontSize="small" />
+                        <DeleteOutline fontSize="small" />
                       </IconButton>
                     </div>
                     {investment.damaged && (

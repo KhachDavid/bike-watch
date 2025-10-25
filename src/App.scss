@@ -130,6 +130,44 @@ body {
   min-width: 320px; // Prevent from getting too narrow
 }
 
+// Mobile: Reorder so controls come right after map
+@media (max-width: 767px) {
+  .main-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  
+  .analysis-section {
+    display: contents; // Unwrap to allow reordering
+  }
+  
+  .action-section {
+    display: contents; // Unwrap to allow reordering
+  }
+  
+  // Specific ordering for mobile
+  .streets-table {
+    order: 1; // Map first
+  }
+  
+  .game-controls {
+    order: 2; // Simulation button second (right after map!)
+  }
+  
+  .investment-panel {
+    order: 3; // Investment options third
+  }
+  
+  .stats-panel {
+    order: 4; // Stats fourth
+  }
+  
+  .risk-chart-panel {
+    order: 5; // Chart last
+  }
+}
+
 // Desktop Layout
 @media (min-width: 1024px) {
   .main-layout {
