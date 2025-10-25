@@ -2,7 +2,7 @@
   "name": "bike-watch-game",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://bike-watch.github.io",
+  "homepage": "https://khachdavid.github.io/bike-watch",
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
