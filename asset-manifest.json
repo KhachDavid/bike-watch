@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/bike-watch/static/css/main.b5b93a3a.css",
-    "main.js": "/bike-watch/static/js/main.5a3e4e15.js",
+    "main.css": "/bike-watch/static/css/main.54e6cd73.css",
+    "main.js": "/bike-watch/static/js/main.46f34cd2.js",
     "static/js/638.14fbe704.chunk.js": "/bike-watch/static/js/638.14fbe704.chunk.js",
     "static/js/113.c164723c.chunk.js": "/bike-watch/static/js/113.c164723c.chunk.js",
     "index.html": "/bike-watch/index.html",
-    "main.b5b93a3a.css.map": "/bike-watch/static/css/main.b5b93a3a.css.map",
-    "main.5a3e4e15.js.map": "/bike-watch/static/js/main.5a3e4e15.js.map",
+    "main.54e6cd73.css.map": "/bike-watch/static/css/main.54e6cd73.css.map",
+    "main.46f34cd2.js.map": "/bike-watch/static/js/main.46f34cd2.js.map",
     "638.14fbe704.chunk.js.map": "/bike-watch/static/js/638.14fbe704.chunk.js.map",
     "113.c164723c.chunk.js.map": "/bike-watch/static/js/113.c164723c.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.b5b93a3a.css",
-    "static/js/main.5a3e4e15.js"
+    "static/css/main.54e6cd73.css",
+    "static/js/main.46f34cd2.js"
   ]
 }
