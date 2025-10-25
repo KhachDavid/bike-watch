@@ -6,6 +6,7 @@ import { selectInvestmentTypes, selectSelectedInvestment } from '../../store/sel
 import { selectInvestment } from '../../store/actions/game.actions';
 import { RootState } from '../../types';
 import DetectiveMarketplace from '../DetectiveMarketplace';
+import GAMEPLAY_CONFIG from '../../config/gameplay';
 import './styles.scss';
 
 const InvestmentPanel: React.FC = () => {
@@ -13,11 +14,27 @@ const InvestmentPanel: React.FC = () => {
   const selectedInvestment = useSelector(selectSelectedInvestment);
   const currentBudget = useSelector((state: RootState) => state.game.currentBudget);
   const detectives = useSelector((state: RootState) => state.game.detectives);
+  const actionsLocked = useSelector((state: RootState) => state.game.actionsLocked);
+  const backlashTurnsRemaining = useSelector((state: RootState) => state.game.backlashTurnsRemaining);
+  const policePresence = useSelector((state: RootState) => state.game.policePresenceScore);
   const dispatch = useDispatch();
 
   const handleSelectInvestment = (type: string) => {
+    if (actionsLocked) return; // Prevent selection when locked
     dispatch(selectInvestment(type));
   };
+  
+  // Determine warning level
+  const getPoliceWarning = () => {
+    const { WARNING_THRESHOLD, MINOR_THRESHOLD, MAJOR_THRESHOLD } = GAMEPLAY_CONFIG.POLICE_PRESENCE;
+    
+    if (policePresence >= MAJOR_THRESHOLD) return { level: 'severe', message: '🚨 CRITICAL: Police presence at dangerous levels!' };
+    if (policePresence >= MINOR_THRESHOLD) return { level: 'high', message: '⚠️ WARNING: High police presence causing tension' };
+    if (policePresence >= WARNING_THRESHOLD) return { level: 'medium', message: '⚡ CAUTION: Police presence increasing' };
+    return null;
+  };
+  
+  const policeWarning = getPoliceWarning();
 
   const getInvestmentIcon = (effect: string) => {
     switch (effect) {
@@ -63,6 +80,32 @@ const InvestmentPanel: React.FC = () => {
       </div>
       
       <div className="card-content">
+        {/* Actions Locked Warning */}
+        {actionsLocked && (
+          <div className="backlash-warning locked">
+            <Typography variant="subtitle2" style={{ fontWeight: 700, marginBottom: '8px' }}>
+              🚫 ACTIONS SUSPENDED
+            </Typography>
+            <Typography variant="body2" style={{ marginBottom: '8px' }}>
+              Community backlash has forced a suspension of all new deployments.
+            </Typography>
+            <Typography variant="caption">
+              Unlocks in {backlashTurnsRemaining} turn{backlashTurnsRemaining !== 1 ? 's' : ''}. Check your email for details.
+            </Typography>
+          </div>
+        )}
+        
+        {/* Police Presence Warning */}
+        {!actionsLocked && policeWarning && (
+          <div className={`police-warning ${policeWarning.level}`}>
+            <Typography variant="body2">
+              {policeWarning.message}
+            </Typography>
+            <Typography variant="caption" style={{ display: 'block', marginTop: '4px' }}>
+              Police Presence: {policePresence} points {policePresence >= GAMEPLAY_CONFIG.POLICE_PRESENCE.MINOR_THRESHOLD && '- Reduce patrols to avoid backlash'}
+            </Typography>
+          </div>
+        )}
         {/* Camera Systems */}
         {cameraInvestments.length > 0 && (
           <div className="investment-category">
@@ -80,7 +123,7 @@ const InvestmentPanel: React.FC = () => {
                   onClick={() => handleSelectInvestment(type)}
                   variant={selectedInvestment === type ? 'contained' : 'outlined'}
                   fullWidth
-                  disabled={currentBudget < investment.cost}
+                  disabled={actionsLocked || currentBudget < investment.cost}
                 >
                   <div className="option-content">
                     <div className="option-header">

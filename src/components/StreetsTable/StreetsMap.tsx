@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents } from 'react-leaflet';
-import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
 import { Videocam, Close, Lightbulb, Lock, Group, LocalPolice, Layers } from '@mui/icons-material';
 import L from 'leaflet';
 import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode } from '../../store/actions/game.actions';
@@ -104,6 +104,9 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   
   // Layer visibility state
   const [visibleLayers, setVisibleLayers] = useState<string[]>(['camera', 'lighting', 'security', 'community', 'enforcement']);
+  
+  // Patrol frequency selection (for police patrols only)
+  const [patrolFrequency, setPatrolFrequency] = useState<'low' | 'medium' | 'high'>('medium');
 
   // San Francisco coordinates
   const center: [number, number] = [37.7749, -122.4194];
@@ -151,7 +154,9 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
       return;
     }
 
-    dispatch(placeInvestment(lat, lng));
+    // Pass patrol frequency if it's a police patrol
+    const isPatrol = investment.effect === 'enforcement';
+    dispatch(placeInvestment(lat, lng, isPatrol ? patrolFrequency : undefined));
   };
 
   const handleRemoveCamera = (cameraId: string, e: React.MouseEvent) => {
@@ -221,6 +226,37 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
               color="primary"
               size="small"
             />
+          )}
+          
+          {/* Patrol Frequency Selector (only for police patrols) */}
+          {placementMode && investmentTypes[selectedInvestment]?.effect === 'enforcement' && (
+            <div className="patrol-frequency-selector">
+              <Typography variant="caption" style={{ marginRight: '8px', fontWeight: 600 }}>
+                Patrol Frequency:
+              </Typography>
+              <ToggleButtonGroup
+                value={patrolFrequency}
+                exclusive
+                onChange={(_, newFreq) => newFreq && setPatrolFrequency(newFreq)}
+                size="small"
+              >
+                <ToggleButton value="low" style={{ padding: '4px 12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Low</span>
+                  </div>
+                </ToggleButton>
+                <ToggleButton value="medium" style={{ padding: '4px 12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Medium</span>
+                  </div>
+                </ToggleButton>
+                <ToggleButton value="high" style={{ padding: '4px 12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>High</span>
+                  </div>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </div>
           )}
         </div>
       )}
@@ -307,12 +343,14 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
               <Marker
                 position={[investment.latitude, investment.longitude]}
                 icon={getInvestmentIcon(investment.type)}
+                opacity={investment.damaged ? 0.4 : 1}
               >
                 <Popup>
                   <div className="camera-popup">
                     <div className="camera-popup-header">
                       <span style={{ color: getInvestmentColor(investment.type) }}>
                         {getInvestmentLabel(investment.type)}
+                        {investment.damaged && ' ⚠️ DAMAGED'}
                       </span>
                       <IconButton
                         size="small"
@@ -322,6 +360,19 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                         <Close fontSize="small" />
                       </IconButton>
                     </div>
+                    {investment.damaged && (
+                      <div style={{ 
+                        background: '#fef2f2', 
+                        padding: '8px', 
+                        borderRadius: '4px', 
+                        marginBottom: '8px',
+                        fontSize: '0.875rem',
+                        color: '#991b1b',
+                        fontWeight: 600
+                      }}>
+                        NOT PROVIDING COVERAGE - Repair: ${(investment.repairCost || 0).toLocaleString()}
+                      </div>
+                    )}
                     <div className="camera-popup-details">
                       <div className="detail-row">
                         <span>Coverage:</span>
@@ -370,7 +421,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
         {/* Street markers */}
         {streetsWithCoords.map((street) => (
           <CircleMarker
-            key={street.id}
+            key={`${street.id}-${street.riskPercentage.toFixed(2)}-${street.theftsLastMonth}`}
             center={[street.latitude!, street.longitude!]}
             radius={selectedStreet === street.id ? 12 : 8}
             fillColor={getRiskColor(street.riskPercentage)}

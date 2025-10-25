@@ -21,6 +21,10 @@ export const GAME_ACTION_TYPES = {
   MAKE_OFFER_TO_DETECTIVE: 'MAKE_OFFER_TO_DETECTIVE',
   FIRE_DETECTIVE: 'FIRE_DETECTIVE',
   REFRESH_MARKETPLACE: 'REFRESH_MARKETPLACE',
+  // Vandalism
+  DISMISS_VANDALISM_ALERT: 'DISMISS_VANDALISM_ALERT',
+  REPAIR_INVESTMENT: 'REPAIR_INVESTMENT',
+  REMOVE_DAMAGED_INVESTMENT: 'REMOVE_DAMAGED_INVESTMENT',
 } as const;
 
 export const initializeGame = () => ({
@@ -81,9 +85,9 @@ export const togglePlacementMode = () => ({
   type: GAME_ACTION_TYPES.TOGGLE_PLACEMENT_MODE,
 });
 
-export const placeInvestment = (latitude: number, longitude: number) => ({
+export const placeInvestment = (latitude: number, longitude: number, patrolFrequency?: 'low' | 'medium' | 'high') => ({
   type: GAME_ACTION_TYPES.PLACE_INVESTMENT,
-  payload: { latitude, longitude },
+  payload: { latitude, longitude, patrolFrequency },
 });
 
 export const removeInvestment = (investmentId: string) => ({
@@ -103,4 +107,18 @@ export const fireDetective = (detectiveId: string) => ({
 
 export const refreshMarketplace = () => ({
   type: GAME_ACTION_TYPES.REFRESH_MARKETPLACE,
+});
+
+export const dismissVandalismAlert = () => ({
+  type: GAME_ACTION_TYPES.DISMISS_VANDALISM_ALERT,
+});
+
+export const repairInvestment = (investmentId: string) => ({
+  type: GAME_ACTION_TYPES.REPAIR_INVESTMENT,
+  payload: investmentId,
+});
+
+export const removeDamagedInvestment = (investmentId: string) => ({
+  type: GAME_ACTION_TYPES.REMOVE_DAMAGED_INVESTMENT,
+  payload: investmentId,
 });

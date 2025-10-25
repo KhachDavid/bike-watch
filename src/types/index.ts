@@ -64,6 +64,8 @@ export interface PlacedInvestment {
   effectRadius: number; // Area of effect in meters
   cost: number;
   placedAt: number;
+  damaged?: boolean; // If true, item is vandalized and not functioning
+  repairCost?: number; // Cost to repair if damaged
   // Type-specific data
   quality?: 'standard' | 'hd' | 'ai-enabled'; // For cameras
   lightingLevel?: number; // For lighting (1-10)
@@ -104,6 +106,14 @@ export interface InvestmentType {
   baseSolveRate?: number;
 }
 
+export interface VandalismAlert {
+  id: string;
+  message: string;
+  items: string[];
+  totalCost: number;
+  turn: number;
+}
+
 export interface GameState {
   currentBudget: number;
   currentTurn: number;
@@ -120,6 +130,10 @@ export interface GameState {
   totalRecovered: number; // Total bikes physically recovered
   totalMoneyRecovered: number; // Total $ recovered from solved cases
   recoveryRate: number; // Percentage of thefts with bikes recovered
+  policePresenceScore: number; // 0-100, tracks police patrol saturation
+  actionsLocked: boolean; // True when backlash prevents actions
+  backlashTurnsRemaining: number; // How many turns until actions unlock
+  vandalismAlert: VandalismAlert | null; // Current vandalism notification
 }
 
 import { EmailState } from './email.types';

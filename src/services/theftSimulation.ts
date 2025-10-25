@@ -1,4 +1,5 @@
 import { TheftIncident, Street, Camera, PlacedInvestment } from '../types';
+import GAMEPLAY_CONFIG from '../config/gameplay';
 
 /**
  * Advanced theft simulation service
@@ -171,23 +172,35 @@ export function simulateThefts(
       
       if (placedInvestments) {
         placedInvestments.forEach(investment => {
+          // Skip damaged investments - they don't provide coverage
+          if (investment.damaged) return;
+          
           if (isCoveredByInvestment(location.lat, location.lon, investment)) {
             if (investment.type.includes('camera')) {
               const quality = investment.quality || 'standard';
-              const cameraDeterrence = quality === 'ai-enabled' ? 0.4 : quality === 'hd' ? 0.3 : 0.2;
+              const cameraDeterrence = 
+                quality === 'ai-enabled' ? GAMEPLAY_CONFIG.INVESTMENT.CAMERA_AI_DETERRENCE :
+                quality === 'hd' ? GAMEPLAY_CONFIG.INVESTMENT.CAMERA_HD_DETERRENCE :
+                GAMEPLAY_CONFIG.INVESTMENT.CAMERA_STANDARD_DETERRENCE;
               totalDeterrence += cameraDeterrence;
             } else if (investment.type.includes('lighting')) {
               enhancedLighting = true;
-              totalDeterrence += 0.15; // Lighting provides deterrence
+              totalDeterrence += GAMEPLAY_CONFIG.INVESTMENT.LIGHTING_DETERRENCE;
             } else if (investment.type.includes('parking')) {
               hasSecureParking = true;
-              totalDeterrence += 0.25; // Secure parking strongly deters
+              totalDeterrence += GAMEPLAY_CONFIG.INVESTMENT.PARKING_DETERRENCE;
             } else if (investment.type.includes('programs')) {
               hasCommunityProgram = true;
-              totalDeterrence += 0.10; // Community watch
+              totalDeterrence += GAMEPLAY_CONFIG.INVESTMENT.COMMUNITY_DETERRENCE;
             } else if (investment.type.includes('patrols')) {
               hasPatrol = true;
-              totalDeterrence += 0.30; // Police patrol is strong deterrent
+              // Deterrence based on patrol frequency
+              const freq = investment.patrolFrequency || GAMEPLAY_CONFIG.INVESTMENT.PATROL.DEFAULT_FREQUENCY;
+              const patrolDeterrence = 
+                freq === 'high' ? GAMEPLAY_CONFIG.INVESTMENT.PATROL.HIGH_DETERRENCE :
+                freq === 'medium' ? GAMEPLAY_CONFIG.INVESTMENT.PATROL.MEDIUM_DETERRENCE :
+                GAMEPLAY_CONFIG.INVESTMENT.PATROL.LOW_DETERRENCE;
+              totalDeterrence += patrolDeterrence;
             }
           }
         });

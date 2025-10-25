@@ -10,6 +10,7 @@ import RiskChart from './components/RiskChart';
 import StreetsTable from './components/StreetsTable';
 import GameControls from './components/GameControls';
 import DataLoader from './components/DataLoader';
+import VandalismAlert from './components/VandalismAlert';
 import './App.scss';
 
 const App: React.FC = () => {
@@ -57,6 +58,9 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
+      {/* Vandalism Alert - Fixed Position Overlay */}
+      <VandalismAlert />
+      
       <Container maxWidth="xl" className="app-container">
         <GameHeader />
         

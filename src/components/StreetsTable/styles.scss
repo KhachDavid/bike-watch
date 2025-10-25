@@ -46,6 +46,8 @@
   // Spreadsheet View
   .streets-spreadsheet {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px; // Ensure table doesn't overflow card
     border-radius: var(--radius-md);
     border: 1px solid var(--gray-200);
   }

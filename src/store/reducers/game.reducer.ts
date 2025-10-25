@@ -2,6 +2,9 @@ import { Street, InvestmentType, GameState } from '../../types';
 import { GAME_ACTION_TYPES } from '../actions/game.actions';
 import { simulateThefts, investigateCases, calculateRecoveryRate } from '../../services/theftSimulation';
 import { generateDetectiveMarketplace, willAcceptOffer } from '../../services/detectiveMarketplace';
+import { calculatePolicePresence, getBacklashLevel, generateBacklashEmail, generateBacklashPosts } from '../../services/backlash';
+import { generateVandalismIncidents, generateVandalismEmail } from '../../services/vandalism';
+import GAMEPLAY_CONFIG from '../../config/gameplay';
 
 // Start with empty streets - will be loaded dynamically from API
 const initialStreets: Street[] = [];
@@ -135,7 +138,7 @@ const investmentTypes: { [key: string]: InvestmentType } = {
 };
 
 const initialState: GameState = {
-  currentBudget: 100000,
+  currentBudget: GAMEPLAY_CONFIG.STARTING_BUDGET,
   currentTurn: 1,
   selectedStreet: null,
   selectedInvestment: null,
@@ -149,7 +152,11 @@ const initialState: GameState = {
   detectiveMarketplace: generateDetectiveMarketplace(),
   totalRecovered: 0,
   totalMoneyRecovered: 0,
-  recoveryRate: 0
+  recoveryRate: 0,
+  policePresenceScore: 0,
+  actionsLocked: false,
+  backlashTurnsRemaining: 0,
+  vandalismAlert: null
 };
 
 const calculateRiskPercentage = (street: Street): number => {
@@ -307,7 +314,7 @@ export default function gameReducer(state = initialState, action: any): GameStat
 
     case GAME_ACTION_TYPES.NEXT_TURN:
       const nextTurn = state.currentTurn + 1;
-      const budgetIncrease = 10000 + (state.currentTurn * 2000);
+      const budgetIncrease = GAMEPLAY_CONFIG.MONTHLY_BUDGET_INCREASE + (state.currentTurn * GAMEPLAY_CONFIG.BUDGET_INCREASE_PER_TURN);
       
       // 1. Deduct detective salaries
       const detectiveSalaries = state.detectives.reduce((sum, d) => sum + (d.salary || 0), 0);
@@ -390,9 +397,10 @@ export default function gameReducer(state = initialState, action: any): GameStat
         // It should only change due to natural escalation or long-term trends
         // actualThefts is AFTER deterrence, so we don't use it to update base rates directly
         
-        // NATURAL ESCALATION: If no recent investment, base threat increases 2-5% per month
+        // NATURAL ESCALATION: If no recent investment, base threat increases per month
         const hasRecentInvestment = street.investment > 0;
-        const escalationMultiplier = hasRecentInvestment ? 1.0 : (1.02 + Math.random() * 0.03);
+        const escalationMultiplier = hasRecentInvestment ? 1.0 : 
+          (1 + GAMEPLAY_CONFIG.ESCALATION_MIN + Math.random() * (GAMEPLAY_CONFIG.ESCALATION_MAX - GAMEPLAY_CONFIG.ESCALATION_MIN));
         
         // Update BASE threat level (not influenced by single month's deterrence)
         const newTheftsPerMonth = Math.round(street.theftsPerMonth * escalationMultiplier);
@@ -413,7 +421,7 @@ export default function gameReducer(state = initialState, action: any): GameStat
         
         // For historical risk, use a minimum floor to avoid collapse
         // Even with 0 thefts, there's still underlying risk
-        const minHistoricalRisk = newProjectedRisk * 0.3; // At least 30% of projected risk
+        const minHistoricalRisk = newProjectedRisk * GAMEPLAY_CONFIG.HISTORICAL_RISK_FLOOR;
         const calculatedHistoricalRisk = Math.max(actualBaseRate, minHistoricalRisk);
         
         return {
@@ -423,15 +431,89 @@ export default function gameReducer(state = initialState, action: any): GameStat
         };
       });
 
+      // 6. Vandalism - random damage to placed investments
+      const vandalismIncidents = generateVandalismIncidents(state.placedInvestments, recalculatedStreets, nextTurn);
+      const vandalizedIds = new Set(vandalismIncidents.map(v => v.targetId));
+      const totalVandalismCost = vandalismIncidents.reduce((sum, v) => sum + v.repairCost, 0);
+      
+      // Mark investments as damaged (don't remove yet - let user decide)
+      const investmentsWithDamage = state.placedInvestments.map(inv => {
+        if (vandalizedIds.has(inv.id)) {
+          const incident = vandalismIncidents.find(v => v.targetId === inv.id);
+          return {
+            ...inv,
+            damaged: true,
+            repairCost: incident?.repairCost || 0
+          };
+        }
+        return inv;
+      });
+      
+      // Mark cameras as damaged too
+      const camerasWithDamage = state.cameras.map(cam => {
+        const isVandalized = vandalizedIds.has(cam.id);
+        return isVandalized ? { ...cam, damaged: true } as any : cam;
+      });
+      
+      // Create vandalism alert if incidents occurred
+      const vandalismAlert = vandalismIncidents.length > 0 ? {
+        id: `vandalism-${nextTurn}`,
+        message: `${vandalismIncidents.length} asset${vandalismIncidents.length > 1 ? 's' : ''} vandalized!`,
+        items: vandalismIncidents.map(v => v.targetName),
+        totalCost: totalVandalismCost,
+        turn: nextTurn
+      } : null;
+      
+      // Store vandalism email for GameControls to dispatch
+      if (vandalismIncidents.length > 0) {
+        (action as any).vandalismEmail = generateVandalismEmail(vandalismIncidents, nextTurn);
+        (action as any).vandalismIncidents = vandalismIncidents; // For potential social media posts
+      }
+      
+      // 7. Check for police backlash (only count non-damaged patrols)
+      const functionalInvestments = investmentsWithDamage.filter(inv => !inv.damaged);
+      const policePresence = calculatePolicePresence(functionalInvestments);
+      const backlashLevel = getBacklashLevel(policePresence);
+      
+      let actionsLocked = state.actionsLocked;
+      let backlashTurnsRemaining = state.backlashTurnsRemaining;
+      
+      // Decrease backlash cooldown if active
+      if (backlashTurnsRemaining > 0) {
+        backlashTurnsRemaining -= 1;
+        if (backlashTurnsRemaining === 0) {
+          actionsLocked = false;
+        }
+      }
+      
+      // Trigger NEW backlash if threshold exceeded (and not already locked)
+      if (!state.actionsLocked && backlashLevel !== 'none' && backlashLevel !== 'warning') {
+        actionsLocked = true;
+        backlashTurnsRemaining = backlashLevel === 'minor' ? GAMEPLAY_CONFIG.POLICE_PRESENCE.MINOR_LOCKOUT : 
+                                backlashLevel === 'major' ? GAMEPLAY_CONFIG.POLICE_PRESENCE.MAJOR_LOCKOUT : 
+                                GAMEPLAY_CONFIG.POLICE_PRESENCE.SEVERE_LOCKOUT;
+        
+        // Generate email and social posts - will be handled by GameControls component
+        // Store them in action payload for GameControls to dispatch
+        (action as any).backlashEmail = generateBacklashEmail(backlashLevel as any, nextTurn);
+        (action as any).backlashPosts = generateBacklashPosts(backlashLevel as any, nextTurn);
+      }
+
       return {
         ...state,
         currentTurn: nextTurn,
-        currentBudget: budgetAfterSalaries + totalMoneyRecovered, // Add recovered money!
+        currentBudget: budgetAfterSalaries + totalMoneyRecovered, // Add recovered money (NO auto-deduction for vandalism)
         streets: recalculatedStreets,
         thefts: updatedThefts,
         totalRecovered: newTotalRecovered,
         totalMoneyRecovered: state.totalMoneyRecovered + totalMoneyRecovered,
-        recoveryRate: newRecoveryRate
+        recoveryRate: newRecoveryRate,
+        policePresenceScore: policePresence,
+        actionsLocked,
+        backlashTurnsRemaining,
+        placedInvestments: investmentsWithDamage, // Items marked as damaged, not removed
+        cameras: camerasWithDamage, // Cameras marked as damaged
+        vandalismAlert // Show alert with repair/remove options
       };
 
     case GAME_ACTION_TYPES.RESET_GAME:
@@ -457,6 +539,9 @@ export default function gameReducer(state = initialState, action: any): GameStat
         return state; // Not enough budget
       }
 
+      // Get patrol frequency from action payload or use default
+      const patrolFreq = (action.payload as any).patrolFrequency || GAMEPLAY_CONFIG.INVESTMENT.PATROL.DEFAULT_FREQUENCY;
+      
       // Create new placed investment
       const newPlacement: any = {
         id: `${placementInvestment.effect}-${Date.now()}-${Math.random()}`,
@@ -466,11 +551,11 @@ export default function gameReducer(state = initialState, action: any): GameStat
         effectRadius: placementInvestment.effectRadius || 50,
         cost: placementInvestment.cost,
         placedAt: state.currentTurn,
-        // Type-specific data
+        // Type-specific data (from config)
         quality: placementInvestment.cameraQuality,
-        lightingLevel: placementInvestment.effect === 'lighting' ? 8 : undefined,
-        patrolFrequency: (placementInvestment.effect === 'enforcement' ? 'medium' : undefined) as 'low' | 'medium' | 'high' | undefined,
-        capacity: placementInvestment.effect === 'security' ? 20 : undefined
+        lightingLevel: placementInvestment.effect === 'lighting' ? GAMEPLAY_CONFIG.INVESTMENT.DEFAULTS.LIGHTING_LEVEL : undefined,
+        patrolFrequency: (placementInvestment.effect === 'enforcement' ? patrolFreq : undefined) as 'low' | 'medium' | 'high' | undefined,
+        capacity: placementInvestment.effect === 'security' ? GAMEPLAY_CONFIG.INVESTMENT.DEFAULTS.PARKING_CAPACITY : undefined
       };
 
       // Legacy: Also add to cameras array if it's a camera
@@ -699,6 +784,41 @@ export default function gameReducer(state = initialState, action: any): GameStat
       return {
         ...state,
         detectiveMarketplace: generateDetectiveMarketplace()
+      };
+
+    case GAME_ACTION_TYPES.DISMISS_VANDALISM_ALERT:
+      return {
+        ...state,
+        vandalismAlert: null
+      };
+
+    case GAME_ACTION_TYPES.REPAIR_INVESTMENT:
+      const investmentToRepair = state.placedInvestments.find(inv => inv.id === action.payload);
+      if (!investmentToRepair || !investmentToRepair.damaged || !investmentToRepair.repairCost) {
+        return state;
+      }
+      
+      if (state.currentBudget < investmentToRepair.repairCost) {
+        alert('Not enough budget to repair this item!');
+        return state;
+      }
+      
+      return {
+        ...state,
+        currentBudget: state.currentBudget - investmentToRepair.repairCost,
+        placedInvestments: state.placedInvestments.map(inv => 
+          inv.id === action.payload ? { ...inv, damaged: false, repairCost: undefined } : inv
+        ),
+        cameras: state.cameras.map(cam => 
+          cam.id === action.payload ? { ...cam, damaged: undefined } as any : cam
+        )
+      };
+
+    case GAME_ACTION_TYPES.REMOVE_DAMAGED_INVESTMENT:
+      return {
+        ...state,
+        placedInvestments: state.placedInvestments.filter(inv => inv.id !== action.payload),
+        cameras: state.cameras.filter(cam => cam.id !== action.payload)
       };
 
     default:

@@ -17,6 +17,44 @@
       border-radius: var(--radius-full);
     }
   }
+  
+  .backlash-warning {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--danger-50);
+    border: 2px solid var(--danger-500);
+    margin-bottom: var(--space-4);
+    
+    &.locked {
+      background: linear-gradient(135deg, var(--danger-50) 0%, var(--danger-100) 100%);
+      border-color: var(--danger-600);
+    }
+  }
+  
+  .police-warning {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    border-left: 4px solid;
+    
+    &.medium {
+      background: var(--warning-50);
+      border-color: var(--warning-600);
+      color: var(--warning-900);
+    }
+    
+    &.high {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+    
+    &.severe {
+      background: var(--danger-50);
+      border-color: var(--danger-600);
+      color: var(--danger-900);
+    }
+  }
 
   .investment-category {
     margin-bottom: var(--space-6);
