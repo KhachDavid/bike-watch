@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/static/css/main.c177aa3d.css",
-    "main.js": "/static/js/main.8ba05a3a.js",
-    "static/js/638.14fbe704.chunk.js": "/static/js/638.14fbe704.chunk.js",
-    "static/js/113.c164723c.chunk.js": "/static/js/113.c164723c.chunk.js",
-    "index.html": "/index.html",
-    "main.c177aa3d.css.map": "/static/css/main.c177aa3d.css.map",
-    "main.8ba05a3a.js.map": "/static/js/main.8ba05a3a.js.map",
-    "638.14fbe704.chunk.js.map": "/static/js/638.14fbe704.chunk.js.map",
-    "113.c164723c.chunk.js.map": "/static/js/113.c164723c.chunk.js.map"
+    "main.css": "/bike-watch/static/css/main.c177aa3d.css",
+    "main.js": "/bike-watch/static/js/main.73aba2ab.js",
+    "static/js/638.14fbe704.chunk.js": "/bike-watch/static/js/638.14fbe704.chunk.js",
+    "static/js/113.c164723c.chunk.js": "/bike-watch/static/js/113.c164723c.chunk.js",
+    "index.html": "/bike-watch/index.html",
+    "main.c177aa3d.css.map": "/bike-watch/static/css/main.c177aa3d.css.map",
+    "main.73aba2ab.js.map": "/bike-watch/static/js/main.73aba2ab.js.map",
+    "638.14fbe704.chunk.js.map": "/bike-watch/static/js/638.14fbe704.chunk.js.map",
+    "113.c164723c.chunk.js.map": "/bike-watch/static/js/113.c164723c.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.c177aa3d.css",
-    "static/js/main.8ba05a3a.js"
+    "static/js/main.73aba2ab.js"
   ]
 }
