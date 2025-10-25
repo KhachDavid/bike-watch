@@ -142,7 +142,7 @@ const StreetsTable: React.FC = () => {
                       <td className="numeric-cell">{street.theftsPerMonth}</td>
                       <td className="risk-cell">
                         <span className={`risk-value ${riskInfo.class}`}>
-                          {street.historicalRisk}%
+                          {street.historicalRisk.toFixed(1)}%
                         </span>
                       </td>
                       <td className="numeric-cell">{street.lightingScore}/10</td>

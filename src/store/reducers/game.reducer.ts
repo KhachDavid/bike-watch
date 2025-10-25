@@ -5,6 +5,7 @@ import { generateDetectiveMarketplace, willAcceptOffer } from '../../services/de
 import { calculatePolicePresence, getBacklashLevel, generateBacklashEmail, generateBacklashPosts } from '../../services/backlash';
 import { generateVandalismIncidents, generateVandalismEmail } from '../../services/vandalism';
 import { generateHireEmail, generateProgressEmail, generateQuitEmail } from '../../services/detectivePersonality';
+import { calculateYearlyPerformance, generateExpectations, generatePerformanceReviewEmail, shouldBeFired } from '../../services/performanceReview';
 import GAMEPLAY_CONFIG from '../../config/gameplay';
 
 // Start with empty streets - will be loaded dynamically from API
@@ -157,7 +158,21 @@ const initialState: GameState = {
   policePresenceScore: 0,
   actionsLocked: false,
   backlashTurnsRemaining: 0,
-  vandalismAlert: null
+  vandalismAlert: null,
+  // Performance tracking
+  yearlyStats: {
+    year: 2025,
+    totalThefts: 0,
+    totalRecovered: 0,
+    policeBacklashEvents: 0,
+    vandalismEvents: 0,
+    detectivesHired: 0,
+    detectivesQuit: 0,
+    budgetSpent: 0
+  },
+  previousYearStats: null,
+  performanceWarnings: 0,
+  gameOver: false
 };
 
 const calculateRiskPercentage = (street: Street): number => {
@@ -275,9 +290,9 @@ const updateStreetStats = (street: Street, investment: InvestmentType): Street =
       break;
   }
   
-  // Recalculate risk with new factors (lighting, traffic, investment amount)
+  // Recalculate PROJECTED risk with new factors (lighting, traffic, investment amount)
   updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
-  updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95; // Historical slightly lower
+  // DO NOT modify historicalRisk - it's based on fixed past data (2023-2024)
   
   return updatedStreet;
 };
@@ -372,6 +387,10 @@ export default function gameReducer(state = initialState, action: any): GameStat
       const nextTurn = state.currentTurn + 1;
       const budgetIncrease = GAMEPLAY_CONFIG.MONTHLY_BUDGET_INCREASE + (state.currentTurn * GAMEPLAY_CONFIG.BUDGET_INCREASE_PER_TURN);
       
+      // Check if it's a new year (January = turn 1, 13, 25, 37...)
+      const isJanuary = (nextTurn - 1) % 12 === 0 && nextTurn > 1;
+      const currentYear = 2025 + Math.floor((nextTurn - 1) / 12);
+      
       // 1. Deduct detective salaries
       const detectiveSalaries = state.detectives.reduce((sum, d) => sum + (d.salary || 0), 0);
       const budgetAfterSalaries = state.currentBudget + budgetIncrease - detectiveSalaries;
@@ -459,7 +478,16 @@ export default function gameReducer(state = initialState, action: any): GameStat
           (1 + GAMEPLAY_CONFIG.ESCALATION_MIN + Math.random() * (GAMEPLAY_CONFIG.ESCALATION_MAX - GAMEPLAY_CONFIG.ESCALATION_MIN));
         
         // Update BASE threat level (not influenced by single month's deterrence)
-        const newTheftsPerMonth = Math.round(street.theftsPerMonth * escalationMultiplier);
+        // Add bounds to prevent runaway escalation or collapse
+        const calculatedTheftsPerMonth = Math.round(street.theftsPerMonth * escalationMultiplier);
+        
+        // Bound changes: max ±20% per month to prevent wild swings
+        const maxTheftIncrease = Math.round(street.theftsPerMonth * 1.20);
+        const maxTheftDecrease = Math.round(street.theftsPerMonth * 0.80);
+        const newTheftsPerMonth = Math.max(
+          Math.min(calculatedTheftsPerMonth, maxTheftIncrease),
+          maxTheftDecrease
+        );
         
         // Update street with new data
         const updatedStreet = {
@@ -471,19 +499,51 @@ export default function gameReducer(state = initialState, action: any): GameStat
         // Calculate PROJECTED risk for next month (includes all current deterrence)
         const newProjectedRisk = calculateRiskPercentage(updatedStreet);
         
-        // Calculate HISTORICAL risk from what actually happened this month
+        // Calculate HISTORICAL risk using rolling average for continuity
+        // Historical risk should change gradually, not jump wildly month-to-month
         const monthlyBikes = updatedStreet.bikesPerDay * 30;
-        const actualBaseRate = monthlyBikes > 0 ? (actualThefts / monthlyBikes) * 100 : 0;
+        const thisMonthsActualRate = monthlyBikes > 0 ? (actualThefts / monthlyBikes) * 100 : 0;
         
-        // For historical risk, use a minimum floor to avoid collapse
-        // Even with 0 thefts, there's still underlying risk
-        const minHistoricalRisk = newProjectedRisk * GAMEPLAY_CONFIG.HISTORICAL_RISK_FLOOR;
-        const calculatedHistoricalRisk = Math.max(actualBaseRate, minHistoricalRisk);
+        // Use weighted moving average: 75% previous historical risk + 25% this month's actual
+        // This creates smooth, realistic trends instead of volatile jumps
+        const previousHistoricalRisk = street.historicalRisk || street.riskPercentage;
+        const smoothedHistoricalRisk = (previousHistoricalRisk * 0.75) + (thisMonthsActualRate * 0.25);
+        
+        // Apply bounds to ensure data integrity:
+        // 1. Minimum floor: Even with investments, there's always some underlying risk
+        const minHistoricalRisk = Math.max(1.0, newProjectedRisk * GAMEPLAY_CONFIG.HISTORICAL_RISK_FLOOR);
+        
+        // 2. Maximum change per month: Historical risk can't swing more than ±1.5% per month
+        const maxChangePerMonth = 1.5;
+        const maxIncrease = previousHistoricalRisk + maxChangePerMonth;
+        const maxDecrease = Math.max(minHistoricalRisk, previousHistoricalRisk - maxChangePerMonth);
+        
+        // 3. Bound the smoothed value
+        let boundedHistoricalRisk = Math.max(smoothedHistoricalRisk, minHistoricalRisk);
+        boundedHistoricalRisk = Math.min(boundedHistoricalRisk, maxIncrease);
+        boundedHistoricalRisk = Math.max(boundedHistoricalRisk, maxDecrease);
+        
+        // 4. Final sanity check: historical risk should generally track below or near projected risk
+        // (Unless we just deployed lots of new deterrence, then historical is catching up)
+        const maxHistoricalRisk = Math.max(newProjectedRisk * 1.2, previousHistoricalRisk);
+        const finalHistoricalRisk = Math.min(boundedHistoricalRisk, maxHistoricalRisk);
+        
+        // Debug logging for first few streets to verify continuity
+        if (street.id <= 3 && nextTurn <= 5) {
+          console.log(`[Turn ${nextTurn}] ${street.name}:
+  - Actual thefts this month: ${actualThefts}
+  - This month's rate: ${thisMonthsActualRate.toFixed(2)}%
+  - Previous historical: ${previousHistoricalRisk.toFixed(2)}%
+  - Smoothed historical: ${smoothedHistoricalRisk.toFixed(2)}%
+  - Final historical: ${finalHistoricalRisk.toFixed(2)}%
+  - Projected (next): ${newProjectedRisk.toFixed(2)}%
+  - Base thefts/mo: ${street.theftsPerMonth} → ${newTheftsPerMonth}`);
+        }
         
         return {
           ...updatedStreet,
           riskPercentage: newProjectedRisk,
-          historicalRisk: Math.max(1, Math.round(calculatedHistoricalRisk * 10) / 10)
+          historicalRisk: Math.max(1, Math.round(finalHistoricalRisk * 10) / 10)
         };
       });
 
@@ -600,7 +660,8 @@ export default function gameReducer(state = initialState, action: any): GameStat
       }
       
       // Trigger NEW backlash if threshold exceeded (and not already locked)
-      if (!state.actionsLocked && backlashLevel !== 'none' && backlashLevel !== 'warning') {
+      const backlashTriggered = !state.actionsLocked && backlashLevel !== 'none' && backlashLevel !== 'warning';
+      if (backlashTriggered) {
         actionsLocked = true;
         backlashTurnsRemaining = backlashLevel === 'minor' ? GAMEPLAY_CONFIG.POLICE_PRESENCE.MINOR_LOCKOUT : 
                                 backlashLevel === 'major' ? GAMEPLAY_CONFIG.POLICE_PRESENCE.MAJOR_LOCKOUT : 
@@ -610,6 +671,120 @@ export default function gameReducer(state = initialState, action: any): GameStat
         // Store them in action payload for GameControls to dispatch
         (action as any).backlashEmail = generateBacklashEmail(backlashLevel as any, nextTurn);
         (action as any).backlashPosts = generateBacklashPosts(backlashLevel as any, nextTurn);
+      }
+      
+      // 8. Update yearly stats
+      const updatedYearlyStats = {
+        ...state.yearlyStats,
+        totalThefts: state.yearlyStats.totalThefts + newThefts.length,
+        totalRecovered: state.yearlyStats.totalRecovered + totalBikesRecovered,
+        policeBacklashEvents: state.yearlyStats.policeBacklashEvents + (backlashTriggered ? 1 : 0),
+        vandalismEvents: state.yearlyStats.vandalismEvents + (vandalismIncidents.length > 0 ? 1 : 0),
+        detectivesQuit: state.yearlyStats.detectivesQuit + detectivesWhoQuit.length
+      };
+      
+      // 8b. Check for high-performing detectives and potentially send mayor praise email
+      let mayorDetectiveEmail = null;
+      if (nextTurn % 6 === 0 && state.detectives.length > 0 && newRecoveryRate > 20) {
+        // Every 6 months, if recovery rate is good, mayor might notice social media praise
+        const topDetectives = [...state.detectives]
+          .filter(d => d.solvedCases > 15)
+          .sort((a, b) => b.solvedCases - a.solvedCases)
+          .slice(0, 2);
+        
+        if (topDetectives.length > 0 && Math.random() > 0.5) {
+          const detective = topDetectives[0];
+          const mayorTemplates = [
+            {
+              subject: `Good Work - Detective ${detective.name}`,
+              body: `Coordinator,\n\nI've been monitoring social media sentiment (yes, I actually read the replies), and I'm seeing positive feedback about Detective ${detective.name}.\n\n"${detective.name} recovered my bike!" "Give ${detective.name} a raise!" etc.\n\nThis is good. This is what we need. Public confidence in the program.\n\n${detective.name} has solved ${detective.solvedCases} cases - that's solid work. Make sure they have the resources and support to keep this up. High-performing detectives are hard to find and harder to keep.\n\nIf you're managing them well, keep doing it. If they're succeeding despite you, at least don't get in their way.\n\nRegards,\nDaniel Lurie\nMayor, City and County of San Francisco`
+            },
+            {
+              subject: `Re: Public Praise for Your Team`,
+              body: `Coordinator,\n\nI don't usually read Twitter but my communications director showed me a thread about Detective ${detective.name}. Multiple residents praising their work. That's rare.\n\n${detective.name}: ${detective.solvedCases} cases solved, strong public perception.\n\nThis is exactly the kind of visible success we need. The Board notices when residents are happy. Residents are talking about getting their bikes back, not complaining about theft rates.\n\nWhatever management approach you're using with ${detective.name}, apply it to the rest of your team. We need more success stories like this.\n\nKeep it up.\n\nDaniel Lurie\nMayor`
+            },
+            {
+              subject: `Social Media Win - Detective ${detective.name}`,
+              body: `Coordinator,\n\nQuick note: I saw Detective ${detective.name}'s name trending positively on local Twitter this morning. "${detective.name} is the real deal." "Finally someone who actually solves cases."\n\nPublic perception matters. ${detective.name} has ${detective.solvedCases} solved cases and people are noticing. That's good PR for the program.\n\nMake sure they're not burning out. High-performing detectives who quit become high-profile failures. Support them, give them what they need.\n\nThis is what success looks like. More of this.\n\nDaniel Lurie`
+            }
+          ];
+          
+          const template = mayorTemplates[Math.floor(Math.random() * mayorTemplates.length)];
+          mayorDetectiveEmail = {
+            id: `mayor-detective-praise-${nextTurn}`,
+            from: 'Mayor Daniel Lurie',
+            fromTitle: 'Mayor of San Francisco',
+            subject: template.subject,
+            body: template.body,
+            timestamp: new Date(),
+            read: false,
+            priority: 'normal' as const
+          };
+          
+          (action as any).mayorDetectiveEmail = mayorDetectiveEmail;
+        }
+      }
+      
+      // 9. Performance Review (if it's January)
+      let performanceReviewEmail = null;
+      let newPreviousYearStats = state.previousYearStats;
+      let newYearlyStats = updatedYearlyStats;
+      let newPerformanceWarnings = state.performanceWarnings;
+      let gameOver = state.gameOver;
+      let gameOverReason = state.gameOverReason;
+      
+      if (isJanuary) {
+        // Calculate performance for the past year
+        const metrics = calculateYearlyPerformance(
+          currentYear - 1,
+          state.previousYearStats,
+          {
+            totalTheftsThisYear: state.yearlyStats.totalThefts,
+            totalRecovered: state.yearlyStats.totalRecovered,
+            totalMoneyRecovered: state.totalMoneyRecovered,
+            recoveryRate: state.recoveryRate,
+            detectivesHired: state.yearlyStats.detectivesHired,
+            detectivesQuit: state.yearlyStats.detectivesQuit,
+            budgetSpent: state.yearlyStats.budgetSpent,
+            camerasDeployed: state.placedInvestments.filter(i => i.type.includes('camera')).length,
+            budgetEfficiency: state.yearlyStats.budgetSpent > 0 ? state.yearlyStats.totalRecovered / state.yearlyStats.budgetSpent : 0
+          },
+          {
+            policeBacklash: state.yearlyStats.policeBacklashEvents,
+            vandalism: state.yearlyStats.vandalismEvents
+          }
+        );
+        
+        // Check if player should be fired
+        const fired = shouldBeFired(metrics, state.performanceWarnings);
+        
+        // Generate review email
+        const expectations = generateExpectations(state.streets, metrics);
+        performanceReviewEmail = generatePerformanceReviewEmail(metrics, expectations, nextTurn, fired);
+        (action as any).performanceReviewEmail = performanceReviewEmail;
+        
+        if (fired) {
+          gameOver = true;
+          gameOverReason = performanceReviewEmail.body;
+        }
+        
+        // Update warnings if poor/failing
+        if (metrics.overallRating === 'failing') newPerformanceWarnings += 2;
+        else if (metrics.overallRating === 'poor') newPerformanceWarnings += 1;
+        else if (metrics.overallRating === 'good' || metrics.overallRating === 'excellent') newPerformanceWarnings = Math.max(0, newPerformanceWarnings - 1);
+        
+        // Move current stats to previous, reset current
+        newPreviousYearStats = state.yearlyStats;
+        newYearlyStats = {
+          year: currentYear,
+          totalThefts: 0,
+          totalRecovered: 0,
+          policeBacklashEvents: 0,
+          vandalismEvents: 0,
+          detectivesHired: 0,
+          detectivesQuit: 0,
+          budgetSpent: 0
+        };
       }
 
       return {
@@ -627,7 +802,13 @@ export default function gameReducer(state = initialState, action: any): GameStat
         backlashTurnsRemaining,
         placedInvestments: investmentsWithDamage, // Items marked as damaged, not removed
         cameras: camerasWithDamage, // Cameras marked as damaged
-        vandalismAlert // Show alert with repair/remove options
+        vandalismAlert, // Show alert with repair/remove options
+        // Performance tracking
+        yearlyStats: newYearlyStats,
+        previousYearStats: newPreviousYearStats,
+        performanceWarnings: newPerformanceWarnings,
+        gameOver,
+        gameOverReason
       };
 
     case GAME_ACTION_TYPES.RESET_GAME:
@@ -746,9 +927,11 @@ export default function gameReducer(state = initialState, action: any): GameStat
           // Track total investment
           updatedStreet.investment = updatedStreet.investment + placementInvestment.cost;
           
-          // Recalculate risk with new factors
+          // Recalculate PROJECTED risk with new factors (future prediction)
           updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
-          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          
+          // DO NOT touch historicalRisk - it's based on past data (2023-2024) and should never change!
+          // historicalRisk represents ACTUAL historical theft rates, not projections
           
           return updatedStreet;
         }
@@ -787,7 +970,7 @@ export default function gameReducer(state = initialState, action: any): GameStat
             surveillanceScore
           };
           updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
-          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          // DO NOT modify historicalRisk - it represents actual past data
           return updatedStreet;
         }
         
@@ -841,7 +1024,7 @@ export default function gameReducer(state = initialState, action: any): GameStat
           
           updatedStreet.investment = Math.max(0, updatedStreet.investment - investmentToRemove.cost);
           updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
-          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          // DO NOT modify historicalRisk - it stays constant as past data
           
           return updatedStreet;
         }
@@ -890,7 +1073,11 @@ export default function gameReducer(state = initialState, action: any): GameStat
         ...state,
         detectives: [...state.detectives, hiredDetective],
         detectiveMarketplace: state.detectiveMarketplace.filter(d => d.id !== detectiveId),
-        currentBudget: state.currentBudget - offeredSalary
+        currentBudget: state.currentBudget - offeredSalary,
+        yearlyStats: {
+          ...state.yearlyStats,
+          detectivesHired: state.yearlyStats.detectivesHired + 1
+        }
       };
 
     case GAME_ACTION_TYPES.FIRE_DETECTIVE:

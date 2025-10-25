@@ -135,9 +135,11 @@ const DetectiveMarketplace: React.FC = () => {
   };
 
   const getAttributeColor = (value: number) => {
-    if (value >= 15) return '#10b981'; // Green
-    if (value >= 10) return '#f59e0b'; // Orange
-    return '#ef4444'; // Red
+    // Updated thresholds for /20 scale
+    if (value >= 17) return '#10b981'; // Green (17-20 = excellent)
+    if (value >= 14) return '#3b82f6'; // Blue (14-16 = good)
+    if (value >= 11) return '#f59e0b'; // Orange (11-13 = average)
+    return '#ef4444'; // Red (8-10 = below average)
   };
 
   const calculateAcceptanceProbability = (detective: any, offer: number) => {
@@ -326,27 +328,27 @@ const DetectiveMarketplace: React.FC = () => {
                     <TableCell align="center">{detective.experience}y</TableCell>
                     <TableCell align="center">
                       <span style={{ color: getAttributeColor(detective.investigation) }}>
-                        {detective.investigation}
+                        {detective.investigation}/20
                       </span>
                     </TableCell>
                     <TableCell align="center">
                       <span style={{ color: getAttributeColor(detective.forensics) }}>
-                        {detective.forensics}
+                        {detective.forensics}/20
                       </span>
                     </TableCell>
                     <TableCell align="center">
                       <span style={{ color: getAttributeColor(detective.interviewing) }}>
-                        {detective.interviewing}
+                        {detective.interviewing}/20
                       </span>
                     </TableCell>
                     <TableCell align="center">
                       <span style={{ color: getAttributeColor(detective.surveillance) }}>
-                        {detective.surveillance}
+                        {detective.surveillance}/20
                       </span>
                     </TableCell>
                     <TableCell align="center">
                       <span style={{ color: getAttributeColor(detective.intuition) }}>
-                        {detective.intuition}
+                        {detective.intuition}/20
                       </span>
                     </TableCell>
                     <TableCell>

@@ -417,7 +417,7 @@ function generateRandomPost(turn: number, index: number, performanceMultiplier: 
   };
 }
 
-export function generateNewPosts(turn: number, streets: any[]): SocialPost[] {
+export function generateNewPosts(turn: number, streets: any[], detectives?: any[], recoveryRate?: number): SocialPost[] {
   const posts: SocialPost[] = [];
   const highRiskStreets = streets.filter(s => s.riskPercentage > 7);
   const lowRiskStreets = streets.filter(s => s.riskPercentage < 4);
@@ -460,6 +460,43 @@ export function generateNewPosts(turn: number, streets: any[]): SocialPost[] {
           timestamp: new Date(),
           sentiment: 'positive',
           neighborhood: street.name
+        });
+        continue;
+      }
+    }
+    
+    // DETECTIVE PRAISE POSTS - if recovery rate is good and we have detectives
+    if (detectives && detectives.length > 0 && recoveryRate && recoveryRate > 15 && Math.random() > 0.7) {
+      // Find high-performing detectives
+      const goodDetectives = detectives.filter(d => d.solvedCases > 10);
+      if (goodDetectives.length > 0) {
+        const detective = goodDetectives[Math.floor(Math.random() * goodDetectives.length)];
+        const detectiveTemplates = [
+          `Shout out to Detective ${detective.name} for recovering my stolen bike! Didn't think I'd ever see it again. Real hero 🙏`,
+          `Detective ${detective.name} just cracked my case from 3 months ago. Got my bike back AND the thief arrested. This is what we pay for!`,
+          `Update: Detective ${detective.name} called me today - THEY FOUND MY BIKE! I take back everything negative I said about this program 😅`,
+          `Anyone else had success with Detective ${detective.name}? They solved my case in like 2 weeks. Impressive work.`,
+          `Big ups to Detective ${detective.name} - ${detective.solvedCases} cases solved. That's some serious dedication to our community 💪`,
+          `Detective ${detective.name} didn't give up on my case even though it was a cold trail. Bike recovered! Thank you!!`,
+          `Just got off the phone with Detective ${detective.name}. They recovered 3 bikes in my neighborhood this month alone. Give this person a raise!`,
+          `Yo Detective ${detective.name} is the real deal. Found my bike AND got me $800 in recovered value. Respect.`,
+          `Detective ${detective.name} has been putting in WORK. ${detective.solvedCases} solved cases - that's more than most precincts!`,
+          `Props to Detective ${detective.name}. Professional, thorough, actually cares about bike theft. Rare in this city.`,
+          `Detective ${detective.name} found my stolen cargo bike. I use it for my business. Literally saved my livelihood. Thank you!! 🚲`,
+          `Can we talk about how Detective ${detective.name} is single-handedly making SF safer for cyclists? ${detective.solvedCases} cases solved!`,
+          `Detective ${detective.name} tracked down my bike to a chop shop and recovered 12 other bikes too. Legendary.`,
+        ];
+        
+        const content = detectiveTemplates[Math.floor(Math.random() * detectiveTemplates.length)];
+        
+        posts.push({
+          id: `post-detective-${Date.now()}-${i}`,
+          username: `@${usernames[Math.floor(Math.random() * usernames.length)]}`,
+          displayName: names[Math.floor(Math.random() * names.length)],
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${detective.id}`,
+          content,
+          timestamp: new Date(),
+          sentiment: 'positive'
         });
         continue;
       }

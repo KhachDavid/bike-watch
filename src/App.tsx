@@ -11,6 +11,7 @@ import StreetsTable from './components/StreetsTable';
 import GameControls from './components/GameControls';
 import DataLoader from './components/DataLoader';
 import VandalismAlert from './components/VandalismAlert';
+import GameOver from './components/GameOver';
 import './App.scss';
 
 const App: React.FC = () => {
@@ -61,6 +62,9 @@ const App: React.FC = () => {
     <div className="app">
       {/* Vandalism Alert - Fixed Position Overlay */}
       <VandalismAlert />
+      
+      {/* Game Over Dialog */}
+      <GameOver />
       
       <Container maxWidth="xl" className="app-container">
         <GameHeader />

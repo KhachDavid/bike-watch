@@ -86,7 +86,7 @@ Mayor of San Francisco`
       subject: 'Your Position is in Jeopardy',
       content: `I'm going to be direct: your job is on the line.
 
-The city is in an uproar. We have major protests planned for this weekend. The Board of Supervisors is demanding I fire you. Community organizations are calling this a civil rights violation.
+The city is in an uproar. We have major protests planned for this weekend. The City Council is demanding I fire you. Community organizations are calling this a civil rights violation.
 
 You've deployed so many police patrols that residents feel like they're living in an occupied zone. This is the OPPOSITE of what we asked you to do.
 

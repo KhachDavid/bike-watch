@@ -120,6 +120,17 @@ export interface VandalismAlert {
   turn: number;
 }
 
+export interface YearlyStats {
+  year: number;
+  totalThefts: number;
+  totalRecovered: number;
+  policeBacklashEvents: number;
+  vandalismEvents: number;
+  detectivesHired: number;
+  detectivesQuit: number;
+  budgetSpent: number;
+}
+
 export interface GameState {
   currentBudget: number;
   currentTurn: number;
@@ -140,6 +151,12 @@ export interface GameState {
   actionsLocked: boolean; // True when backlash prevents actions
   backlashTurnsRemaining: number; // How many turns until actions unlock
   vandalismAlert: VandalismAlert | null; // Current vandalism notification
+  // Performance tracking
+  yearlyStats: YearlyStats; // Current year's stats
+  previousYearStats: YearlyStats | null; // Last year for comparison
+  performanceWarnings: number; // How many warnings from mayor
+  gameOver: boolean; // True if fired
+  gameOverReason?: string; // Why fired
 }
 
 import { EmailState } from './email.types';

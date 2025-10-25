@@ -28,14 +28,29 @@ const employers = [
 ];
 
 /**
- * Generate a random attribute (0-20 scale like Football Manager)
- * Distribution: More common in middle range, rare extremes
+ * Generate a random attribute (OUT OF 20 scale like Football Manager)
+ * Distribution: Weighted towards competent detectives
  */
 function generateAttribute(): number {
-  // Use multiple random rolls for normal distribution
-  const roll1 = Math.random() * 10;
-  const roll2 = Math.random() * 10;
-  return Math.round((roll1 + roll2) / 2 + 5); // Center around 10, range 5-15 mostly
+  // Weighted distribution - more talented detectives overall
+  const roll = Math.random();
+  
+  if (roll < 0.10) {
+    // 10% chance: Below average (8-10)
+    return Math.floor(Math.random() * 3) + 8;
+  } else if (roll < 0.35) {
+    // 25% chance: Average (11-13)
+    return Math.floor(Math.random() * 3) + 11;
+  } else if (roll < 0.70) {
+    // 35% chance: Good (14-16)
+    return Math.floor(Math.random() * 3) + 14;
+  } else if (roll < 0.92) {
+    // 22% chance: Very Good (17-18)
+    return Math.floor(Math.random() * 2) + 17;
+  } else {
+    // 8% chance: Excellent (19-20)
+    return Math.floor(Math.random() * 2) + 19;
+  }
 }
 
 /**

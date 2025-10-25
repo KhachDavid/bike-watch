@@ -91,11 +91,11 @@ export const GAMEPLAY_CONFIG = {
   
   // ===== RECOVERY SYSTEM =====
   RECOVERY: {
-    // Base recovery rates by footage quality
-    NO_FOOTAGE: 0.3,
-    STANDARD_FOOTAGE: 0.4,
-    HD_FOOTAGE: 0.6,
-    AI_FOOTAGE: 0.8,
+    // Base recovery rates by footage quality (increased for more talented detectives)
+    NO_FOOTAGE: 0.4,          // 40% base recovery without footage
+    STANDARD_FOOTAGE: 0.5,    // 50% with standard cameras
+    HD_FOOTAGE: 0.7,          // 70% with HD cameras
+    AI_FOOTAGE: 0.85,         // 85% with AI cameras
     
     // Time decay for recovery chance
     RECOVERY_DECAY_PER_TURN: 0.2,  // -20% per turn

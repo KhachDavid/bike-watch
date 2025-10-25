@@ -534,7 +534,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
               <div className="map-tooltip">
                 <strong>{street.name}</strong>
                 <div className="tooltip-risk">
-                  Historical Risk: {street.historicalRisk}% ({getRiskLevel(street.historicalRisk)})
+                  Historical Risk: {street.historicalRisk.toFixed(1)}% ({getRiskLevel(street.historicalRisk)})
                 </div>
                 {((street as any).camerasNearby || 0) > 0 && (
                   <div className="tooltip-cameras">
@@ -552,7 +552,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                   <div className="popup-stat">
                     <span className="stat-label">Historical Risk</span>
                     <span className={`stat-value risk-${getRiskLevel(street.historicalRisk).toLowerCase()}`}>
-                      {street.historicalRisk}% - {getRiskLevel(street.historicalRisk)}
+                      {street.historicalRisk.toFixed(1)}% - {getRiskLevel(street.historicalRisk)}
                     </span>
                   </div>
                   

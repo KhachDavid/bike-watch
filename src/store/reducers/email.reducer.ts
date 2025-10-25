@@ -34,12 +34,44 @@ TOOLS AT YOUR DISPOSAL:
 - Community watch and education programs
 - Coordinated police patrol support
 
-WHAT WE'RE ASKING FOR:
+📋 PERFORMANCE EXPECTATIONS (YEAR 1 - 2025):
+
+You'll receive your first formal performance review in January 2026. Here's what I'll be looking at:
+
+Success Metrics:
+• Reduce bike thefts by at least 15% compared to baseline
+• Achieve minimum 15% recovery rate on stolen bikes
+• Maintain community trust (max 2 police backlash incidents)
+• Demonstrate efficient budget use with measurable results
+• Build and maintain an effective detective team
+
+⚠️ CRITICAL: WHAT NOT TO DO:
+• DO NOT over-deploy police patrols - community backlash WILL end your tenure
+• DO NOT ignore the data - every decision must be evidence-based
+• DO NOT let detective morale crash - they're expensive and hard to replace
+• DO NOT create new problems while solving old ones
+
+📊 HOW YOU'LL BE EVALUATED:
+
+Every January, we'll sit down for a formal review. I'll assess:
+- Year-over-year theft trends (Did they go up or down?)
+- Recovery rates (Are detectives actually solving cases?)
+- Community impact (Did you create a police state?)
+- Budget efficiency (Did you waste taxpayer money?)
+- Team management (Did all your detectives quit?)
+
+Your rating will be: Excellent, Good, Acceptable, Poor, or Failing.
+
+Multiple poor reviews = termination. Severe incidents = immediate termination.
+
+The City Council is watching this program closely. They need to see results to justify continued funding. Don't make me defend a failing program to them.
+
+IMMEDIATE FOCUS:
 Work toward getting our citywide bike theft risk below 5% within six months. Focus especially on neighborhoods with the highest incident rates - the data will show you where to start.
 
 Your dashboard has everything you need: theft patterns, risk assessments, neighborhood profiles. Use the data wisely, deploy resources strategically, and help us make San Francisco a place where people can safely ride bikes again.
 
-Good luck out there.
+This is your shot. Make it count.
 
 Mayor Daniel Lurie
 City and County of San Francisco`,

@@ -1,0 +1,103 @@
+.game-over-dialog {
+  .MuiDialog-paper {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    color: white;
+  }
+  
+  .game-over-title {
+    text-align: center;
+    padding: 32px 24px 16px;
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+    border-bottom: 2px solid rgba(239, 68, 68, 0.3);
+    
+    .game-over-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: shake 0.5s ease-in-out;
+    }
+  }
+  
+  .game-over-content {
+    padding: 24px;
+  }
+  
+  .termination-notice {
+    background: rgba(254, 242, 242, 0.1);
+    border: 2px solid #ef4444;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    
+    .termination-body {
+      margin-top: 12px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: #fca5a5;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  }
+  
+  .final-stats {
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+      
+      .stat-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        
+        .stat-label {
+          font-size: 0.75rem;
+          color: #9ca3af;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        
+        .stat-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #f3f4f6;
+        }
+      }
+    }
+  }
+  
+  .game-over-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+    
+    .restart-button {
+      padding: 12px 48px;
+      font-size: 1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      
+      &:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+      }
+    }
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
