@@ -3,6 +3,7 @@ import { Typography } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { selectCurrentBudget, selectCurrentTurn } from '../../store/selectors/game.selectors';
 import EmailInbox from '../EmailInbox';
+import SocialFeed from '../SocialFeed';
 import './styles.scss';
 
 const GameHeader: React.FC = () => {
@@ -27,7 +28,7 @@ const GameHeader: React.FC = () => {
             Bike Watch
           </Typography>
           <Typography variant="body2" className="game-subtitle">
-            San Francisco • Bicycle Theft Prevention Coordinator
+            SF Bicycle Theft Prevention Coordinator
           </Typography>
         </div>
         
@@ -59,7 +60,8 @@ const GameHeader: React.FC = () => {
             </Typography>
           </div>
           
-          <div className="stat-item email-item">
+          <div className="stat-item communication-item">
+            <SocialFeed />
             <EmailInbox />
           </div>
         </div>

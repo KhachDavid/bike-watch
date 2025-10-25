@@ -1,14 +1,23 @@
 import React from 'react';
 import { Typography } from '@mui/material';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { nextTurn, resetGame } from '../../store/actions/game.actions';
+import { selectStreets, selectCurrentTurn } from '../../store/selectors/game.selectors';
+import { SOCIAL_ACTION_TYPES } from '../../store/reducers/social.reducer';
+import { generateNewPosts } from '../../services/socialGenerator';
 import './styles.scss';
 
 const GameControls: React.FC = () => {
   const dispatch = useDispatch();
+  const streets = useSelector(selectStreets);
+  const currentTurn = useSelector(selectCurrentTurn);
 
   const handleNextTurn = () => {
     dispatch(nextTurn());
+    
+    // Generate new social media posts based on current state
+    const newPosts = generateNewPosts(currentTurn + 1, streets);
+    dispatch({ type: SOCIAL_ACTION_TYPES.ADD_POSTS, payload: newPosts });
   };
 
   const handleResetGame = () => {

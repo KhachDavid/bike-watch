@@ -57,10 +57,11 @@
     line-height: 1;
   }
   
-  &.email-item {
+  &.communication-item {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-2);
   }
 }
 
