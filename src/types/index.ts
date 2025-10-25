@@ -30,6 +30,7 @@ export interface GameState {
 
 export interface RootState {
   game: GameState;
+  email: import('./email.types').EmailState;
 }
 
 export type AppDispatch = typeof import('../configureStore').default extends (...args: any[]) => infer R ? R extends { dispatch: infer D } ? D : never : never;

@@ -2,6 +2,7 @@ import React from 'react';
 import { Typography } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { selectCurrentBudget, selectCurrentTurn } from '../../store/selectors/game.selectors';
+import EmailInbox from '../EmailInbox';
 import './styles.scss';
 
 const GameHeader: React.FC = () => {
@@ -26,7 +27,7 @@ const GameHeader: React.FC = () => {
             Bike Watch
           </Typography>
           <Typography variant="body2" className="game-subtitle">
-            San Francisco • Real SFPD patterns, scaled for gameplay
+            San Francisco • Bicycle Theft Prevention Coordinator
           </Typography>
         </div>
         
@@ -56,6 +57,10 @@ const GameHeader: React.FC = () => {
             <Typography variant="h6" className="stat-value">
               {currentTurn}
             </Typography>
+          </div>
+          
+          <div className="stat-item email-item">
+            <EmailInbox />
           </div>
         </div>
       </div>
