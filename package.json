@@ -2,6 +2,7 @@
   "name": "bike-watch-game",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://bike-watch.github.io",
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
@@ -29,7 +30,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -52,6 +55,7 @@
   "devDependencies": {
     "@types/chart.js": "^2.9.41",
     "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0"
+    "@types/react-dom": "^18.2.0",
+    "gh-pages": "^6.3.0"
   }
 }
