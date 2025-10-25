@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents } from 'react-leaflet';
 import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
-import { Videocam, Close, Lightbulb, Lock, Group, LocalPolice, Layers } from '@mui/icons-material';
+import { Videocam, Close, Lightbulb, Lock, Group, LocalPolice, Layers, Build, Delete } from '@mui/icons-material';
 import L from 'leaflet';
-import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode } from '../../store/actions/game.actions';
+import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode, repairInvestment, removeDamagedInvestment } from '../../store/actions/game.actions';
 import { RootState, Camera, PlacedInvestment } from '../../types';
 import 'leaflet/dist/leaflet.css';
 import './map-styles.scss';
@@ -31,7 +31,6 @@ interface StreetsMapProps {
   streets: Street[];
   selectedStreet: number | null;
   onSelectStreet: (streetId: number) => void;
-  onApplyInvestment: () => void;
   selectedInvestment: string | null;
 }
 
@@ -43,11 +42,24 @@ const createIcon = (svg: string, color: string) => new L.Icon({
   popupAnchor: [0, -16],
 });
 
-const cameraIcon = createIcon(`
+// Camera icons for different qualities (matching legend colors)
+const standardCameraIcon = createIcon(`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
     <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
   </svg>
-`, '#ef4444');
+`, '#6b7280'); // Gray
+
+const hdCameraIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+  </svg>
+`, '#3b82f6'); // Blue
+
+const aiCameraIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+  </svg>
+`, '#8b5cf6'); // Purple
 
 const lightingIcon = createIcon(`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
@@ -92,7 +104,6 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   streets,
   selectedStreet,
   onSelectStreet,
-  onApplyInvestment,
   selectedInvestment
 }) => {
   const dispatch = useDispatch();
@@ -111,11 +122,40 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   // San Francisco coordinates
   const center: [number, number] = [37.7749, -122.4194];
 
-  const streetsWithCoords = streets.map((street, index) => ({
-    ...street,
-    latitude: street.latitude || 37.7749 + (Math.random() - 0.5) * 0.1,
-    longitude: street.longitude || -122.4194 + (Math.random() - 0.5) * 0.1
-  }));
+  // Calculate deployed investments near each street
+  const streetsWithCoords = streets.map((street, index) => {
+    const lat = street.latitude || 37.7749 + (Math.random() - 0.5) * 0.1;
+    const lon = street.longitude || -122.4194 + (Math.random() - 0.5) * 0.1;
+    
+    // Find all investments within 500m of this street
+    const nearbyInvestments = placedInvestments.filter(inv => {
+      if (inv.damaged) return false; // Don't count damaged items
+      const R = 6371000;
+      const lat1 = lat * Math.PI / 180;
+      const lat2 = inv.latitude * Math.PI / 180;
+      const lon1 = lon * Math.PI / 180;
+      const lon2 = inv.longitude * Math.PI / 180;
+      const dlat = lat2 - lat1;
+      const dlon = lon2 - lon1;
+      const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+                Math.cos(lat1) * Math.cos(lat2) *
+                Math.sin(dlon/2) * Math.sin(dlon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      return distance <= 500; // Within 500m
+    });
+    
+    const camerasNearby = nearbyInvestments.filter(inv => inv.type.includes('camera')).length;
+    const totalInvestmentNearby = nearbyInvestments.reduce((sum, inv) => sum + inv.cost, 0);
+    
+    return {
+      ...street,
+      latitude: lat,
+      longitude: lon,
+      camerasNearby,
+      totalInvestmentNearby
+    };
+  });
 
   const getRiskColor = (risk: number) => {
     if (risk < 4) return '#10b981'; // Green
@@ -173,6 +213,18 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
     }
   };
 
+  const handleRepairInvestment = (investmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(repairInvestment(investmentId));
+  };
+
+  const handleRemoveDamaged = (investmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Remove this damaged item permanently?')) {
+      dispatch(removeDamagedInvestment(investmentId));
+    }
+  };
+
   const handleTogglePlacementMode = () => {
     if (!placementMode && !selectedInvestment) {
       alert('Please select an investment type first!');
@@ -185,21 +237,31 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
     setVisibleLayers(newLayers);
   };
 
-  const getInvestmentIcon = (type: string) => {
-    if (type.includes('camera')) return cameraIcon;
-    if (type.includes('lighting')) return lightingIcon;
-    if (type.includes('parking')) return parkingIcon;
-    if (type.includes('programs')) return communityIcon;
-    if (type.includes('patrols')) return patrolIcon;
-    return cameraIcon;
+  const getInvestmentIcon = (investment: PlacedInvestment) => {
+    if (investment.type.includes('camera')) {
+      // Return icon based on camera quality
+      if (investment.quality === 'ai-enabled') return aiCameraIcon;
+      if (investment.quality === 'hd') return hdCameraIcon;
+      return standardCameraIcon; // standard or undefined defaults to standard
+    }
+    if (investment.type.includes('lighting')) return lightingIcon;
+    if (investment.type.includes('parking')) return parkingIcon;
+    if (investment.type.includes('programs')) return communityIcon;
+    if (investment.type.includes('patrols')) return patrolIcon;
+    return standardCameraIcon;
   };
 
-  const getInvestmentColor = (type: string) => {
-    if (type.includes('camera')) return '#ef4444';
-    if (type.includes('lighting')) return '#f59e0b';
-    if (type.includes('parking')) return '#8b5cf6';
-    if (type.includes('programs')) return '#10b981';
-    if (type.includes('patrols')) return '#3b82f6';
+  const getInvestmentColor = (investment: PlacedInvestment) => {
+    if (investment.type.includes('camera')) {
+      // Return color based on camera quality
+      if (investment.quality === 'ai-enabled') return '#8b5cf6'; // Purple
+      if (investment.quality === 'hd') return '#3b82f6'; // Blue
+      return '#6b7280'; // Gray for standard
+    }
+    if (investment.type.includes('lighting')) return '#f59e0b';
+    if (investment.type.includes('parking')) return '#8b5cf6';
+    if (investment.type.includes('programs')) return '#10b981';
+    if (investment.type.includes('patrols')) return '#3b82f6';
     return '#6b7280';
   };
 
@@ -330,9 +392,9 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                 center={[investment.latitude, investment.longitude]}
                 radius={investment.effectRadius}
                 pathOptions={{
-                  fillColor: getInvestmentColor(investment.type),
+                  fillColor: getInvestmentColor(investment),
                   fillOpacity: 0.1,
-                  color: getInvestmentColor(investment.type),
+                  color: getInvestmentColor(investment),
                   weight: 2,
                   opacity: 0.6,
                   dashArray: '5, 5'
@@ -342,13 +404,13 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
               {/* Investment marker */}
               <Marker
                 position={[investment.latitude, investment.longitude]}
-                icon={getInvestmentIcon(investment.type)}
+                icon={getInvestmentIcon(investment)}
                 opacity={investment.damaged ? 0.4 : 1}
               >
                 <Popup>
                   <div className="camera-popup">
                     <div className="camera-popup-header">
-                      <span style={{ color: getInvestmentColor(investment.type) }}>
+                      <span style={{ color: getInvestmentColor(investment) }}>
                         {getInvestmentLabel(investment.type)}
                         {investment.damaged && ' ⚠️ DAMAGED'}
                       </span>
@@ -411,6 +473,41 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                         </div>
                       )}
                     </div>
+                    
+                    {/* Repair/Remove buttons for damaged items */}
+                    {investment.damaged && (
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '8px', 
+                        marginTop: '12px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #e5e7eb'
+                      }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<Build />}
+                          onClick={(e) => handleRepairInvestment(investment.id, e)}
+                          disabled={currentBudget < (investment.repairCost || 0)}
+                          style={{ 
+                            flex: 1,
+                            backgroundColor: currentBudget >= (investment.repairCost || 0) ? '#10b981' : undefined
+                          }}
+                        >
+                          Repair (${(investment.repairCost || 0).toLocaleString()})
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Delete />}
+                          onClick={(e) => handleRemoveDamaged(investment.id, e)}
+                          color="error"
+                          style={{ flex: 1 }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </Popup>
               </Marker>
@@ -421,10 +518,10 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
         {/* Street markers */}
         {streetsWithCoords.map((street) => (
           <CircleMarker
-            key={`${street.id}-${street.riskPercentage.toFixed(2)}-${street.theftsLastMonth}`}
+            key={`${street.id}-${street.historicalRisk.toFixed(2)}-${street.theftsLastMonth}`}
             center={[street.latitude!, street.longitude!]}
             radius={selectedStreet === street.id ? 12 : 8}
-            fillColor={getRiskColor(street.riskPercentage)}
+            fillColor={getRiskColor(street.historicalRisk)}
             color={selectedStreet === street.id ? '#1f2937' : '#ffffff'}
             weight={selectedStreet === street.id ? 3 : 2}
             opacity={1}
@@ -437,11 +534,11 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
               <div className="map-tooltip">
                 <strong>{street.name}</strong>
                 <div className="tooltip-risk">
-                  Risk: {street.riskPercentage.toFixed(1)}% ({getRiskLevel(street.riskPercentage)})
+                  Historical Risk: {street.historicalRisk}% ({getRiskLevel(street.historicalRisk)})
                 </div>
-                {(street.cameraCount || 0) > 0 && (
+                {((street as any).camerasNearby || 0) > 0 && (
                   <div className="tooltip-cameras">
-                    <Videocam fontSize="small" /> {street.cameraCount} camera{street.cameraCount !== 1 ? 's' : ''}
+                    <Videocam fontSize="small" /> {(street as any).camerasNearby} camera{(street as any).camerasNearby !== 1 ? 's' : ''} nearby
                   </div>
                 )}
               </div>
@@ -453,9 +550,9 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                 
                 <div className="popup-stats">
                   <div className="popup-stat">
-                    <span className="stat-label">Risk Level</span>
-                    <span className={`stat-value risk-${getRiskLevel(street.riskPercentage).toLowerCase()}`}>
-                      {street.riskPercentage.toFixed(1)}% - {getRiskLevel(street.riskPercentage)}
+                    <span className="stat-label">Historical Risk</span>
+                    <span className={`stat-value risk-${getRiskLevel(street.historicalRisk).toLowerCase()}`}>
+                      {street.historicalRisk}% - {getRiskLevel(street.historicalRisk)}
                     </span>
                   </div>
                   
@@ -466,42 +563,38 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                   
                   <div className="popup-stat">
                     <span className="stat-label">Last Month Thefts</span>
-                    <span className="stat-value">{street.theftsLastMonth}</span>
-                  </div>
-                  
-                  <div className="popup-stat">
-                    <span className="stat-label">Surveillance Score</span>
-                    <span className="stat-value">{street.surveillanceScore || 0}/10</span>
-                  </div>
-                  
-                  <div className="popup-stat">
-                    <span className="stat-label">Cameras</span>
-                    <span className="stat-value">
-                      <Videocam fontSize="small" /> {street.cameraCount || 0}
+                    <span className="stat-value" style={{ fontWeight: 700, color: 'var(--primary-700)' }}>
+                      {street.theftsLastMonth}
                     </span>
                   </div>
                   
                   <div className="popup-stat">
-                    <span className="stat-label">Investment</span>
-                    <span className="stat-value">${street.investment.toLocaleString()}</span>
+                    <span className="stat-label">Avg/Month (2023-24)</span>
+                    <span className="stat-value">{street.theftsPerMonth}</span>
+                  </div>
+                  
+                  <div className="popup-stat">
+                    <span className="stat-label">Lighting</span>
+                    <span className="stat-value">{street.lightingScore}/10</span>
+                  </div>
+                  
+                  <div className="popup-stat">
+                    <span className="stat-label">Foot Traffic</span>
+                    <span className="stat-value">{street.footTraffic}</span>
+                  </div>
+                  
+                  <div className="popup-stat">
+                    <span className="stat-label">Cameras Nearby</span>
+                    <span className="stat-value">
+                      <Videocam fontSize="small" /> {(street as any).camerasNearby || 0}
+                    </span>
+                  </div>
+                  
+                  <div className="popup-stat">
+                    <span className="stat-label">Deployed Nearby</span>
+                    <span className="stat-value">${((street as any).totalInvestmentNearby || 0).toLocaleString()}</span>
                   </div>
                 </div>
-                
-                {!placementMode && (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    fullWidth
-                    disabled={!selectedInvestment || investmentTypes[selectedInvestment]?.canBePlaced}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onApplyInvestment();
-                    }}
-                    className="popup-apply-button"
-                  >
-                    {selectedInvestment ? 'Apply Investment' : 'Select Investment First'}
-                  </Button>
-                )}
               </div>
             </Popup>
           </CircleMarker>

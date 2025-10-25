@@ -51,7 +51,7 @@ const VandalismAlert: React.FC = () => {
             🔨 VANDALISM ALERT - {damagedInvestments.length} Asset{damagedInvestments.length > 1 ? 's' : ''} Damaged!
           </AlertTitle>
           <div style={{ marginBottom: '12px', fontSize: '0.875rem' }}>
-            Choose to <strong>repair</strong> (costs money, keeps coverage) or <strong>remove</strong> (free, lose coverage).
+            <strong>Repair now</strong> (costs money), <strong>remove</strong> (free), or <strong>decide later</strong> (click items on map).
           </div>
           {damagedInvestments.map((inv) => {
             const investmentType = inv.type.includes('camera') ? (inv.quality?.toUpperCase() || 'STANDARD') + ' Camera' :
@@ -96,6 +96,17 @@ const VandalismAlert: React.FC = () => {
           <div style={{ marginTop: '12px', fontSize: '0.75rem', fontStyle: 'italic', color: '#666' }}>
             Damaged items don't provide coverage until repaired. Check your email for details.
           </div>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleClose}
+              sx={{ textTransform: 'none' }}
+            >
+              Decide Later (Click items on map)
+            </Button>
+          </Box>
         </Alert>
       </div>
     </Collapse>

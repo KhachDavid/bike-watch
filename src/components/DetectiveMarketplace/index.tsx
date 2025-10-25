@@ -35,6 +35,7 @@ const DetectiveMarketplace: React.FC = () => {
   const marketplace = useSelector((state: RootState) => state.game.detectiveMarketplace);
   const currentBudget = useSelector((state: RootState) => state.game.currentBudget);
   const hiredDetectives = useSelector((state: RootState) => state.game.detectives);
+  const currentTurn = useSelector((state: RootState) => state.game.currentTurn);
 
   const filteredDetectives = marketplace.filter(d => {
     if (filter === 'available') return !d.employed;
@@ -60,8 +61,47 @@ const DetectiveMarketplace: React.FC = () => {
   const handleMakeOffer = () => {
     if (!selectedDetective) return;
     
+    const detective = marketplace.find(d => d.id === selectedDetective);
+    if (!detective) return;
+    
     dispatch(makeOfferToDetective(selectedDetective, offerAmount));
+    
+    // Dispatch hire email
+    setTimeout(() => {
+      const hireEmail = {
+        id: `detective-hire-${detective.id}-${currentTurn}`,
+        from: detective.name,
+        fromTitle: 'Detective',
+        subject: `First Day - ${detective.name}`,
+        body: getHireMessage(detective),
+        timestamp: new Date(),
+        read: false,
+        priority: 'normal' as const
+      };
+      dispatch({ type: 'ADD_EMAIL', payload: hireEmail });
+    }, 100);
+    
     handleClose();
+  };
+  
+  const getHireMessage = (detective: any) => {
+    const intros: any = {
+      professional: `Thank you for the opportunity to join your team. I'm looking forward to contributing my ${detective.experience} years of experience to reduce bike theft in San Francisco.\n\nBest regards,\n${detective.name}`,
+      eager: `I'm SO excited to be part of this team! I've been wanting to work on a project like this for ages. Let's catch some thieves!\n\nCan't wait to get started!\n${detective.name}`,
+      grumpy: `Alright, I'm in. Send me the case files. No need for lengthy introductions—I'd rather get to work.\n\n- ${detective.name}`,
+      eccentric: `Fascinating opportunity! I can already sense the patterns in this city's bike theft ecosystem. The moon phase data could be very revealing...\n\nUntil next time,\n${detective.name}`,
+      methodical: `I've reviewed the case backlog and developed a systematic approach to tackle it. Let's establish a clear workflow and get started.\n\nRegards,\n${detective.name}`,
+      ambitious: `This is exactly the career opportunity I've been looking for. I plan to have the highest solve rate on the team.\n\nReady to excel,\n${detective.name}`
+    };
+    
+    const message = intros[detective.personality] || intros.professional;
+    const skillNote = detective.intuition > 13 && detective.experience > 8 
+      ? `\n\nFYI: I can work cases even without camera footage. My experience and intuition usually fill in the gaps.\n\n`
+      : detective.surveillance > 15
+      ? `\n\nNote: I'm particularly skilled at analyzing camera footage. HD and AI cameras will help me solve cases faster.\n\n`
+      : '\n\n';
+    
+    return `Hello,\n\n${message}${skillNote}`;
   };
 
   const handleRefresh = () => {
@@ -153,7 +193,7 @@ const DetectiveMarketplace: React.FC = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
+                  <TableCell>Name & Personality</TableCell>
                   <TableCell align="center">Age</TableCell>
                   <TableCell align="center">Exp</TableCell>
                   <TableCell align="center">Invest</TableCell>
@@ -176,7 +216,7 @@ const DetectiveMarketplace: React.FC = () => {
                     className={`detective-row ${!canSolveWithoutFootage(detective) ? 'requires-footage' : ''}`}
                   >
                     <TableCell>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <strong>{detective.name}</strong>
                         {!canSolveWithoutFootage(detective) && (
                           <Tooltip title="Requires camera footage to solve cases">
@@ -189,7 +229,19 @@ const DetectiveMarketplace: React.FC = () => {
                           </Tooltip>
                         )}
                       </div>
-                      <div className="detective-traits">{getDetectiveReport(detective)}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px', textTransform: 'capitalize' }}>
+                        {detective.personality}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {detective.traits.slice(0, 2).map(trait => (
+                          <Chip 
+                            key={trait}
+                            label={trait} 
+                            size="small" 
+                            style={{ fontSize: '0.65rem', height: '20px' }}
+                          />
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell align="center">{detective.age}</TableCell>
                     <TableCell align="center">{detective.experience}y</TableCell>

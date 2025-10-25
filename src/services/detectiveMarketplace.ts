@@ -1,4 +1,5 @@
 import { Detective } from '../types';
+import { generatePersonality } from './detectivePersonality';
 
 const firstNames = [
   'Sarah', 'Michael', 'Jessica', 'David', 'Emily', 'James', 'Rachel', 'Robert',
@@ -114,6 +115,12 @@ function generateDetective(id: string, forceUnemployed: boolean = false): Detect
     solvedCases: 0,
     successRate: 0.5 + (Math.random() * 0.3) // 50-80% base
   };
+  
+  // Generate personality
+  const personalityData = generatePersonality(detective);
+  detective.personality = personalityData.personality;
+  detective.traits = personalityData.traits;
+  detective.morale = personalityData.morale;
   
   const desiredSalary = calculateDesiredSalary(detective);
   detective.desiredSalary = desiredSalary;

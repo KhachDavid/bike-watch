@@ -1,9 +1,9 @@
 import React from 'react';
 import { Typography, Button, Chip } from '@mui/material';
-import { Videocam, Lightbulb, Lock, Group, LocalPolice, Search } from '@mui/icons-material';
+import { Videocam, Lightbulb, Lock, Group, LocalPolice, Search, PersonRemove, Mood, MoodBad, SentimentNeutral } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectInvestmentTypes, selectSelectedInvestment } from '../../store/selectors/game.selectors';
-import { selectInvestment } from '../../store/actions/game.actions';
+import { selectInvestment, fireDetective } from '../../store/actions/game.actions';
 import { RootState } from '../../types';
 import DetectiveMarketplace from '../DetectiveMarketplace';
 import GAMEPLAY_CONFIG from '../../config/gameplay';
@@ -80,6 +80,15 @@ const InvestmentPanel: React.FC = () => {
       </div>
       
       <div className="card-content">
+        {/* How to Invest Instructions */}
+        {!actionsLocked && (
+          <div className="investment-instructions">
+            <Typography variant="caption" style={{ display: 'block', marginBottom: '8px', color: 'var(--gray-700)' }}>
+              💡 <strong>How to Deploy:</strong> Select an option below, then switch to <strong>Map View</strong> and click "Enable Placement Mode" to deploy on the map.
+            </Typography>
+          </div>
+        )}
+        
         {/* Actions Locked Warning */}
         {actionsLocked && (
           <div className="backlash-warning locked">
@@ -161,15 +170,41 @@ const InvestmentPanel: React.FC = () => {
             <div className="active-detectives">
               {detectives.map(detective => {
                 const avgSkill = Math.round((detective.investigation + detective.forensics + detective.interviewing + detective.surveillance + detective.intuition) / 6);
+                const getMoraleIcon = () => {
+                  if (detective.morale >= 70) return <Mood style={{ color: '#10b981', fontSize: '16px' }} />;
+                  if (detective.morale >= 40) return <SentimentNeutral style={{ color: '#f59e0b', fontSize: '16px' }} />;
+                  return <MoodBad style={{ color: '#ef4444', fontSize: '16px' }} />;
+                };
+                
                 return (
                   <div key={detective.id} className="detective-card">
-                    <div className="detective-info">
-                      <strong>{detective.name}</strong>
-                      <span className="detective-skill">Avg: {avgSkill}/20</span>
+                    <div className="detective-header">
+                      <div className="detective-info">
+                        <strong>{detective.name}</strong>
+                        <span className="detective-personality">{detective.personality}</span>
+                      </div>
+                      <Button
+                        size="small"
+                        startIcon={<PersonRemove />}
+                        onClick={() => dispatch(fireDetective(detective.id))}
+                        className="fire-button"
+                        title="Fire Detective"
+                      >
+                        Fire
+                      </Button>
+                    </div>
+                    <div className="detective-traits">
+                      {detective.traits.map(trait => (
+                        <Chip key={trait} label={trait} size="small" className="trait-chip" />
+                      ))}
                     </div>
                     <div className="detective-stats">
+                      <span>Skill: {avgSkill}/20</span>
                       <span>Solved: {detective.solvedCases}</span>
                       <span>Salary: ${(detective.salary || 0).toLocaleString()}/turn</span>
+                      <span className="morale-indicator" title={`Morale: ${detective.morale}%`}>
+                        {getMoraleIcon()} {detective.morale}%
+                      </span>
                     </div>
                   </div>
                 );

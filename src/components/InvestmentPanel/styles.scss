@@ -18,6 +18,14 @@
     }
   }
   
+  .investment-instructions {
+    padding: var(--space-3);
+    background: var(--primary-50);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--primary-600);
+    margin-bottom: var(--space-4);
+  }
+  
   .backlash-warning {
     padding: var(--space-4);
     border-radius: var(--radius-md);
@@ -87,30 +95,79 @@
       margin-bottom: var(--space-3);
       
       .detective-card {
-        padding: var(--space-2) var(--space-3);
-        background: var(--gray-50);
-        border: 1px solid var(--gray-200);
+        padding: var(--space-3);
+        background: var(--white);
+        border: 2px solid var(--gray-200);
         border-radius: var(--radius-md);
+        transition: all 0.2s ease;
         
-        .detective-info {
+        &:hover {
+          border-color: var(--primary-300);
+          box-shadow: var(--shadow-sm);
+        }
+        
+        .detective-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: var(--space-1);
+          align-items: flex-start;
+          margin-bottom: var(--space-2);
           
-          strong {
-            font-size: 0.9375rem;
-            color: var(--gray-900);
-          }
-          
-          .detective-skill {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
+          .detective-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            
+            strong {
+              font-size: 0.9375rem;
+              color: var(--gray-900);
+            }
+            
+            .detective-personality {
+              font-size: 0.75rem;
+              color: var(--gray-600);
+              text-transform: capitalize;
+              font-style: italic;
             padding: 2px var(--space-2);
             border-radius: var(--radius-sm);
             background: var(--primary-100);
             color: var(--primary-700);
+          }
+        }
+        
+          }
+          
+          .fire-button {
+            all: unset;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            color: var(--red-600);
+            background: var(--red-50);
+            border: 1px solid var(--red-200);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            
+            &:hover {
+              background: var(--red-100);
+              border-color: var(--red-300);
+            }
+          }
+        }
+        
+        .detective-traits {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: var(--space-2);
+          
+          .trait-chip {
+            font-size: 0.7rem;
+            height: 22px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
           }
         }
         
@@ -119,6 +176,14 @@
           gap: var(--space-3);
           font-size: 0.8125rem;
           color: var(--gray-600);
+          flex-wrap: wrap;
+          
+          .morale-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+          }
         }
       }
     }
@@ -132,14 +197,17 @@
 
   .investment-option {
     all: unset;
-    display: block;
+    display: block !important;
     cursor: pointer;
-    padding: var(--space-3);
-    border: 2px solid var(--gray-300);
-    border-radius: var(--radius-md);
-    background: var(--white);
+    padding: var(--space-3) !important;
+    margin: 0 !important;
+    border: 2px solid var(--gray-300) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--white) !important;
     transition: all 0.2s ease;
-    text-align: left;
+    text-align: left !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     
     &:hover:not(:disabled) {
       border-color: var(--primary-400);
@@ -221,7 +289,7 @@
       }
     }
   }
-}
+
 
 @media (max-width: 1024px) {
   .investment-panel {

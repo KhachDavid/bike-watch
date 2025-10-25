@@ -42,6 +42,11 @@ export interface Detective {
   surveillance: number; // Reviewing camera footage
   intuition: number; // Solving cases without much evidence
   stamina: number; // Cases per turn capacity
+  // Personality & Character
+  personality: 'professional' | 'eager' | 'grumpy' | 'eccentric' | 'methodical' | 'ambitious';
+  traits: string[]; // e.g., "Night Owl", "Coffee Addict", "Tech Savvy"
+  morale: number; // 0-100, affects communication tone
+  lastEmailTurn?: number; // When they last sent an email
   // Employment status
   employed: boolean;
   currentEmployer?: string; // If employed elsewhere
@@ -80,6 +85,7 @@ export interface Street {
   theftsPerMonth: number; // Historical average (2023-2024)
   theftsLastMonth: number; // Most recent month (Dec 2024)
   lightingScore: number;
+  baseLightingScore?: number; // Original lighting before investments (for recalculation)
   footTraffic: 'Low' | 'Medium' | 'High' | 'Very High';
   investment: number;
   riskPercentage: number; // PROJECTED risk for next month

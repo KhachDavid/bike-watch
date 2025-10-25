@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Typography, Button, Tabs, Tab } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectStreets, selectSelectedStreet, selectSelectedInvestment, selectCurrentTurn } from '../../store/selectors/game.selectors';
-import { selectStreet, applyInvestment } from '../../store/actions/game.actions';
+import { selectStreet } from '../../store/actions/game.actions';
 import StreetsMap from './StreetsMap';
 import './styles.scss';
 
@@ -22,10 +22,6 @@ const StreetsTable: React.FC = () => {
 
   const handleSelectStreet = (streetId: number) => {
     dispatch(selectStreet(streetId));
-  };
-
-  const handleApplyInvestment = () => {
-    dispatch(applyInvestment());
   };
 
   const getRiskLevel = (risk: number) => {
@@ -58,7 +54,18 @@ const StreetsTable: React.FC = () => {
       
       <div className="card-content">
         {activeTab === 1 ? (
-          <div className="streets-spreadsheet">
+          <>
+            <div style={{ 
+              padding: 'var(--space-2)', 
+              background: 'var(--primary-50)', 
+              borderRadius: 'var(--radius-md)', 
+              marginBottom: 'var(--space-3)',
+              fontSize: '0.875rem',
+              color: 'var(--gray-700)'
+            }}>
+              💡 <strong>To deploy investments:</strong> Switch to <strong>Map View</strong> and use placement mode.
+            </div>
+            <div className="streets-spreadsheet">
             <table className="spreadsheet-table">
               <thead>
                 <tr>
@@ -70,7 +77,6 @@ const StreetsTable: React.FC = () => {
                   <th>Lighting</th>
                   <th>Traffic</th>
                   <th>Investment</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,32 +102,18 @@ const StreetsTable: React.FC = () => {
                       <td className="numeric-cell">{street.lightingScore}/10</td>
                       <td className="traffic-cell">{street.footTraffic}</td>
                       <td className="numeric-cell">${street.investment.toLocaleString()}</td>
-                      <td className="action-cell">
-                        <Button
-                          variant="contained"
-                          size="small"
-                          disabled={!selectedInvestment}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleApplyInvestment();
-                          }}
-                          className="apply-button"
-                        >
-                          Apply
-                        </Button>
-                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </>
         ) : (
           <StreetsMap 
             streets={streets}
             selectedStreet={selectedStreet}
             onSelectStreet={handleSelectStreet}
-            onApplyInvestment={handleApplyInvestment}
             selectedInvestment={selectedInvestment}
           />
         )}

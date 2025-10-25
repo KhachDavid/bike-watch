@@ -33,6 +33,7 @@ const App: React.FC = () => {
           theftsPerMonth: street.theftsPerMonth,
           theftsLastMonth: street.theftsLastMonth,
           lightingScore: street.lightingScore,
+          baseLightingScore: street.lightingScore, // Store original for recalculation
           footTraffic: street.footTraffic as 'Low' | 'Medium' | 'High' | 'Very High',
           investment: street.investment,
           riskPercentage: street.riskPercentage,

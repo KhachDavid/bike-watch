@@ -4,6 +4,7 @@ import { simulateThefts, investigateCases, calculateRecoveryRate } from '../../s
 import { generateDetectiveMarketplace, willAcceptOffer } from '../../services/detectiveMarketplace';
 import { calculatePolicePresence, getBacklashLevel, generateBacklashEmail, generateBacklashPosts } from '../../services/backlash';
 import { generateVandalismIncidents, generateVandalismEmail } from '../../services/vandalism';
+import { generateHireEmail, generateProgressEmail, generateQuitEmail } from '../../services/detectivePersonality';
 import GAMEPLAY_CONFIG from '../../config/gameplay';
 
 // Start with empty streets - will be loaded dynamically from API
@@ -189,6 +190,61 @@ const calculateRiskPercentage = (street: Street): number => {
   const risk = baseTheftRate * lightingMultiplier * trafficMultiplier * investmentMultiplier * surveillanceMultiplier;
   
   return Math.max(1, Math.min(15, Math.round(risk * 10) / 10));
+};
+
+/**
+ * Recalculate street stats from ALL functional investments
+ * Called when investments are damaged/repaired to ensure accuracy
+ */
+const recalculateStreetFromInvestments = (
+  street: Street,
+  allInvestments: any[]
+): Street => {
+  // Start with base values
+  let updatedStreet = { ...street };
+  
+  // Reset to base values
+  updatedStreet.lightingScore = street.baseLightingScore || street.lightingScore;
+  updatedStreet.surveillanceScore = 0;
+  updatedStreet.cameraCount = 0;
+  updatedStreet.cameras = [];
+  
+  // Recalculate from ALL functional investments
+  const functionalInvestments = allInvestments.filter(inv => {
+    if (inv.damaged) return false;
+    if (!street.latitude || !street.longitude) return false;
+    
+    // Distance check
+    const lat1 = inv.latitude * Math.PI / 180;
+    const lat2 = street.latitude * Math.PI / 180;
+    const lon1 = inv.longitude * Math.PI / 180;
+    const lon2 = street.longitude * Math.PI / 180;
+    const dlat = lat2 - lat1;
+    const dlon = lon2 - lon1;
+    const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(dlon/2) * Math.sin(dlon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = 6371000 * c;
+    
+    return distance <= inv.effectRadius;
+  });
+  
+  // Apply boosts from functional investments only
+  functionalInvestments.forEach(inv => {
+    if (inv.type.includes('camera')) {
+      updatedStreet.cameraCount = (updatedStreet.cameraCount || 0) + 1;
+      const qualityMultiplier = 
+        inv.quality === 'ai-enabled' ? 1.5 :
+        inv.quality === 'hd' ? 1.2 : 1.0;
+      const surveillanceBoost = Math.min(3, qualityMultiplier);
+      updatedStreet.surveillanceScore = Math.min(10, (updatedStreet.surveillanceScore || 0) + surveillanceBoost);
+    } else if (inv.type.includes('lighting')) {
+      updatedStreet.lightingScore = Math.min(10, updatedStreet.lightingScore + 2);
+    }
+  });
+  
+  return updatedStreet;
 };
 
 const updateStreetStats = (street: Street, investment: InvestmentType): Street => {
@@ -455,6 +511,11 @@ export default function gameReducer(state = initialState, action: any): GameStat
         return isVandalized ? { ...cam, damaged: true } as any : cam;
       });
       
+      // Recalculate street stats - damaged items won't contribute
+      const streetsAfterVandalism = recalculatedStreets.map(street =>
+        recalculateStreetFromInvestments(street, investmentsWithDamage)
+      );
+      
       // Create vandalism alert if incidents occurred
       const vandalismAlert = vandalismIncidents.length > 0 ? {
         id: `vandalism-${nextTurn}`,
@@ -468,6 +529,58 @@ export default function gameReducer(state = initialState, action: any): GameStat
       if (vandalismIncidents.length > 0) {
         (action as any).vandalismEmail = generateVandalismEmail(vandalismIncidents, nextTurn);
         (action as any).vandalismIncidents = vandalismIncidents; // For potential social media posts
+      }
+      
+      // 6.5. Detective morale & progress emails
+      const detectiveEmails: any[] = [];
+      const detectivesWhoQuit: any[] = [];
+      
+      const detectivesWithMorale = state.detectives.map(detective => {
+        // Calculate workload
+        const casesPerTurn = detective.stamina / 10;
+        const activeCaseCount = updatedThefts.filter(t => !t.solved && t.assignedDetective === detective.id).length;
+        const workload = casesPerTurn > 0 ? activeCaseCount / casesPerTurn : 0;
+        
+        // Calculate cases solved this turn
+        const casesSolvedThisTurn = updatedThefts.filter(t => 
+          t.solved && t.assignedDetective === detective.id && t.solvedAt === nextTurn
+        ).length;
+        
+        // Update morale based on workload
+        let moraleDelta = 0;
+        if (workload > 2.5) moraleDelta = -10; // Overwhelmed
+        else if (workload > 1.5) moraleDelta = -5; // Struggling
+        else if (workload < 0.5 && activeCaseCount > 0) moraleDelta = 5; // Manageable workload
+        else if (workload >= 0.8 && workload <= 1.5) moraleDelta = 2; // Sweet spot
+        
+        const newMorale = Math.max(0, Math.min(100, detective.morale + moraleDelta));
+        
+        // Generate progress email if appropriate
+        const email = generateProgressEmail(detective, nextTurn, casesSolvedThisTurn, activeCaseCount);
+        if (email) {
+          detectiveEmails.push(email);
+        }
+        
+        // Check if detective quits (morale too low)
+        if (newMorale < 20) {
+          const quitEmail = generateQuitEmail(detective, nextTurn);
+          detectiveEmails.push(quitEmail);
+          detectivesWhoQuit.push(detective.id);
+          return null; // Will be filtered out
+        }
+        
+        return {
+          ...detective,
+          morale: newMorale,
+          lastEmailTurn: email ? nextTurn : detective.lastEmailTurn,
+          solvedCases: detective.solvedCases + casesSolvedThisTurn,
+          activeCases: updatedThefts.filter(t => !t.solved && t.assignedDetective === detective.id).map(t => t.id)
+        };
+      }).filter(d => d !== null) as import('../../types').Detective[]; // Remove detectives who quit
+      
+      // Store detective emails for GameControls to dispatch
+      if (detectiveEmails.length > 0) {
+        (action as any).detectiveEmails = detectiveEmails;
       }
       
       // 7. Check for police backlash (only count non-damaged patrols)
@@ -503,8 +616,9 @@ export default function gameReducer(state = initialState, action: any): GameStat
         ...state,
         currentTurn: nextTurn,
         currentBudget: budgetAfterSalaries + totalMoneyRecovered, // Add recovered money (NO auto-deduction for vandalism)
-        streets: recalculatedStreets,
+        streets: streetsAfterVandalism, // Streets recalculated without damaged items
         thefts: updatedThefts,
+        detectives: detectivesWithMorale, // Updated with morale & active cases
         totalRecovered: newTotalRecovered,
         totalMoneyRecovered: state.totalMoneyRecovered + totalMoneyRecovered,
         recoveryRate: newRecoveryRate,
@@ -764,8 +878,13 @@ export default function gameReducer(state = initialState, action: any): GameStat
         salary: offeredSalary,
         hiredAt: state.currentTurn,
         employed: false, // No longer employed elsewhere
-        currentEmployer: undefined
+        currentEmployer: undefined,
+        lastEmailTurn: state.currentTurn, // Track when they sent their intro email
+        morale: 75 // Start with good morale
       };
+
+      // Generate hire email for GameControls to dispatch
+      (action as any).hireEmail = generateHireEmail(hiredDetective, state.currentTurn);
 
       return {
         ...state,
@@ -803,22 +922,40 @@ export default function gameReducer(state = initialState, action: any): GameStat
         return state;
       }
       
+      // Repair the investment
+      const repairedInvestments = state.placedInvestments.map(inv => 
+        inv.id === action.payload ? { ...inv, damaged: false, repairCost: undefined } : inv
+      );
+      
+      // Recalculate street stats with repaired item now functional
+      const streetsAfterRepair = state.streets.map(street =>
+        recalculateStreetFromInvestments(street, repairedInvestments)
+      );
+      
       return {
         ...state,
         currentBudget: state.currentBudget - investmentToRepair.repairCost,
-        placedInvestments: state.placedInvestments.map(inv => 
-          inv.id === action.payload ? { ...inv, damaged: false, repairCost: undefined } : inv
-        ),
+        placedInvestments: repairedInvestments,
         cameras: state.cameras.map(cam => 
           cam.id === action.payload ? { ...cam, damaged: undefined } as any : cam
-        )
+        ),
+        streets: streetsAfterRepair
       };
 
     case GAME_ACTION_TYPES.REMOVE_DAMAGED_INVESTMENT:
+      // Remove the damaged investment
+      const investmentsAfterDamageRemoval = state.placedInvestments.filter(inv => inv.id !== action.payload);
+      
+      // Recalculate street stats without removed item
+      const streetsAfterDamageRemoval = state.streets.map(street =>
+        recalculateStreetFromInvestments(street, investmentsAfterDamageRemoval)
+      );
+      
       return {
         ...state,
-        placedInvestments: state.placedInvestments.filter(inv => inv.id !== action.payload),
-        cameras: state.cameras.filter(cam => cam.id !== action.payload)
+        placedInvestments: investmentsAfterDamageRemoval,
+        cameras: state.cameras.filter(cam => cam.id !== action.payload),
+        streets: streetsAfterDamageRemoval
       };
 
     default:

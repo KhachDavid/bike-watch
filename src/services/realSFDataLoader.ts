@@ -28,6 +28,7 @@ export interface ProcessedStreet {
   theftsPerMonth: number; // Historical average (past 24 months)
   theftsLastMonth: number; // What happened last month (Dec 2024)
   lightingScore: number;
+  baseLightingScore?: number; // Original lighting for recalculation after damage
   footTraffic: 'Low' | 'Medium' | 'High' | 'Very High';
   investment: number;
   riskPercentage: number; // PROJECTED risk for upcoming month
@@ -152,6 +153,7 @@ export const loadRealSFData = (): ProcessedStreet[] => {
       theftsPerMonth,
       theftsLastMonth,
       lightingScore,
+      baseLightingScore: lightingScore, // Store original for damage/repair recalculation
       footTraffic,
       investment: 0,
       riskPercentage: finalProjectedRisk, // FUTURE projection

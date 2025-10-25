@@ -19,6 +19,7 @@ export interface ProcessedStreetData {
   theftsPerMonth: number;
   theftsLastMonth: number;
   lightingScore: number;
+  baseLightingScore?: number;
   footTraffic: string;
   investment: number;
   riskPercentage: number;
