@@ -219,9 +219,10 @@ export function simulateThefts(
         }
         
         // Calculate recovery potential (decreases over time)
+        // Even without footage, detectives use other methods
         const recoveryRate = hasCameraFootage ? 
           (footageQuality === 'ai-enabled' ? 0.8 :
-           footageQuality === 'hd' ? 0.6 : 0.4) : 0.1;
+           footageQuality === 'hd' ? 0.6 : 0.4) : 0.3; // Increased from 0.1 to 0.3
         
         const theft: TheftIncident = {
           id: `theft-${currentTurn}-${street.id}-${Date.now()}-${Math.random()}`,
@@ -237,7 +238,9 @@ export function simulateThefts(
           capturedByCameras: coveringCameras.map(c => c.id),
           solved: false,
           recoveryRate,
-          assignedDetective: undefined
+          assignedDetective: undefined,
+          bikeRecovered: false,
+          moneyRecovered: 0
         };
         
         thefts.push(theft);
@@ -259,11 +262,10 @@ export function investigateCases(
 ): string[] {
   const solvedIds: string[] = [];
   
-  // Detective can work on multiple cases per turn
-  const casesPerTurn = 
-    detective.skill === 'expert' ? Math.floor(Math.random() * 3) + 3 : // 3-5
-    detective.skill === 'senior' ? Math.floor(Math.random() * 2) + 2 : // 2-3
-    Math.floor(Math.random() * 2) + 1; // 1-2 for junior
+  // Detective can work on multiple cases per turn based on STAMINA
+  const casesPerTurn = Math.max(1, Math.min(8, Math.floor(detective.stamina / 3))); // 1-8 cases based on stamina
+  
+  console.log(`🔍 ${detective.name}: Stamina ${detective.stamina} → Working ${casesPerTurn} cases out of ${activeCases.length} active`);
   
   // Prioritize cases with camera footage
   const sortedCases = [...activeCases].sort((a, b) => {
@@ -278,34 +280,76 @@ export function investigateCases(
   casesToWork.forEach(theft => {
     // Time decay: cases get harder to solve over time
     const turnsSinceTheft = currentTurn - theft.turnNumber;
-    const timeDecay = Math.max(0.1, 1 - (turnsSinceTheft * 0.15)); // -15% per turn
+    const timeDecay = Math.max(0.3, 1 - (turnsSinceTheft * 0.1)); // -10% per turn, min 30%
     
-    // Solve probability
-    let solveChance = detective.solveRate * theft.recoveryRate * timeDecay;
+    // Calculate solve probability based on detective attributes
+    let solveChance = 0;
     
-    // Footage quality bonus
     if (theft.hasCameraFootage) {
+      // WITH FOOTAGE: Most detectives can solve these
+      solveChance = (detective.surveillance / 20) * 0.4 +
+                   (detective.investigation / 20) * 0.35 +
+                   (detective.forensics / 20) * 0.25;
+      
+      // Footage quality bonus
       const footageBonus = 
-        theft.footageQuality === 'ai-enabled' ? 1.5 :
-        theft.footageQuality === 'hd' ? 1.3 : 1.1;
+        theft.footageQuality === 'ai-enabled' ? 1.8 : // AI footage is very helpful
+        theft.footageQuality === 'hd' ? 1.5 : 1.3;
       solveChance *= footageBonus;
+      
+      // Base multiplier so even average detectives can solve with footage
+      solveChance *= 1.5;
+    } else {
+      // WITHOUT FOOTAGE: Only skilled/experienced detectives can solve effectively
+      // Requires MINIMUM thresholds:
+      // - Investigation >= 11 OR
+      // - Intuition >= 13 OR
+      // - Experience >= 8 years
+      
+      const hasMinimumSkill = detective.investigation >= 11 || 
+                             detective.intuition >= 13 || 
+                             detective.experience >= 8;
+      
+      if (!hasMinimumSkill) {
+        // Rookie detective struggles without footage (but not impossible)
+        solveChance = 0.05; // 5% chance
+      } else {
+        // Skilled detective can use traditional methods
+        solveChance = (detective.investigation / 20) * 0.35 +
+                     (detective.intuition / 20) * 0.40 +
+                     (detective.interviewing / 20) * 0.20 +
+                     (detective.forensics / 20) * 0.05;
+        
+        // Experience is CRITICAL without footage
+        const experienceBonus = Math.max(0, (detective.experience - 3) / 25); // 0% at 3 years, 108% at 30 years
+        solveChance *= (1 + experienceBonus * 1.5); // Experience matters even more
+      }
     }
     
-    solveChance = Math.min(0.95, solveChance); // Cap at 95%
+    // Apply time decay
+    solveChance *= timeDecay;
+    
+    // Success rate historical performance
+    solveChance *= detective.successRate;
+    
+    solveChance = Math.min(0.95, Math.max(0, solveChance));
     
     if (Math.random() < solveChance) {
       solvedIds.push(theft.id);
     }
   });
   
+  console.log(`   ✅ Solved: ${solvedIds.length}/${casesToWork.length} cases`);
+  
   return solvedIds;
 }
 
 /**
  * Calculate overall recovery rate
+ * Based on bikes actually recovered, not just solved cases
  */
 export function calculateRecoveryRate(thefts: TheftIncident[]): number {
   if (thefts.length === 0) return 0;
-  const solved = thefts.filter(t => t.solved).length;
-  return Math.round((solved / thefts.length) * 100);
+  const recovered = thefts.filter(t => t.bikeRecovered).length;
+  return Math.round((recovered / thefts.length) * 100);
 }

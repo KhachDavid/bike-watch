@@ -112,7 +112,7 @@ const InvestmentPanel: React.FC = () => {
             <Search fontSize="small" /> Detectives
           </h4>
           <p className="category-description">
-            Hire detectives to solve theft cases using camera footage. Browse marketplace to negotiate with {detectives.length > 0 ? 'additional' : ''} detectives.
+            Detectives solve cases and recover bikes/money (returned to budget). Better footage = higher solve & recovery rates!
           </p>
           {detectives.length > 0 && (
             <div className="active-detectives">

@@ -25,6 +25,9 @@ export interface TheftIncident {
   solvedAt?: number; // Turn number when solved
   recoveryRate: number; // 0-1, based on time since theft and footage quality
   assignedDetective?: string;
+  // Recovery outcome
+  bikeRecovered: boolean; // Was the bike actually recovered?
+  moneyRecovered: number; // Amount recovered (either bike value or portion)
 }
 
 export interface Detective {
@@ -38,6 +41,7 @@ export interface Detective {
   interviewing: number; // Getting information from people
   surveillance: number; // Reviewing camera footage
   intuition: number; // Solving cases without much evidence
+  stamina: number; // Cases per turn capacity
   // Employment status
   employed: boolean;
   currentEmployer?: string; // If employed elsewhere
@@ -113,8 +117,9 @@ export interface GameState {
   thefts: TheftIncident[]; // All theft incidents (active and solved)
   detectives: Detective[]; // Hired detectives
   detectiveMarketplace: Detective[]; // Available detectives to hire
-  totalRecovered: number; // Total bikes recovered
-  recoveryRate: number; // Percentage of thefts solved
+  totalRecovered: number; // Total bikes physically recovered
+  totalMoneyRecovered: number; // Total $ recovered from solved cases
+  recoveryRate: number; // Percentage of thefts with bikes recovered
 }
 
 import { EmailState } from './email.types';

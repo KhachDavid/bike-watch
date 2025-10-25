@@ -11,7 +11,9 @@ const StatsPanel: React.FC = () => {
   const totalBikes = useSelector(selectTotalBikes);
   const recoveryRate = useSelector((state: RootState) => state.game.recoveryRate);
   const totalRecovered = useSelector((state: RootState) => state.game.totalRecovered);
+  const totalMoneyRecovered = useSelector((state: RootState) => state.game.totalMoneyRecovered);
   const activeThefts = useSelector((state: RootState) => state.game.thefts.filter(t => !t.solved).length);
+  const totalTheftCases = useSelector((state: RootState) => state.game.thefts.length);
 
   const getRiskLevel = (risk: number) => {
     // Risk ranges: 2-10% (meaningful gameplay)
@@ -49,7 +51,13 @@ const StatsPanel: React.FC = () => {
           <div className="stat-item">
             <div className="stat-value">{recoveryRate}%</div>
             <div className="stat-label">Recovery Rate</div>
-            <div className="stat-subtitle">{totalRecovered} bikes recovered</div>
+            <div className="stat-subtitle">{totalRecovered} of {totalTheftCases} bikes</div>
+          </div>
+          
+          <div className="stat-item">
+            <div className="stat-value">${(totalMoneyRecovered / 1000).toFixed(1)}k</div>
+            <div className="stat-label">Money Recovered</div>
+            <div className="stat-subtitle">From solved cases</div>
           </div>
           
           <div className="stat-item">

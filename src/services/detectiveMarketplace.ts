@@ -34,7 +34,7 @@ function generateAttribute(): number {
   // Use multiple random rolls for normal distribution
   const roll1 = Math.random() * 10;
   const roll2 = Math.random() * 10;
-  return Math.round((roll1 + roll2) / 2 + 5); // Center around 10
+  return Math.round((roll1 + roll2) / 2 + 5); // Center around 10, range 5-15 mostly
 }
 
 /**
@@ -50,7 +50,8 @@ function generateAttributes(experience: number) {
     forensics: generateAttribute(),
     interviewing: generateAttribute(),
     surveillance: generateAttribute(),
-    intuition: generateAttribute()
+    intuition: generateAttribute(),
+    stamina: generateAttribute() // How many cases they can work per turn
   };
 }
 
@@ -222,25 +223,42 @@ export function willAcceptOffer(
 }
 
 /**
+ * Check if detective can solve cases without camera footage
+ * Rookies struggle without footage, but experienced detectives can use traditional methods
+ */
+export function canSolveWithoutFootage(detective: Detective): boolean {
+  return detective.investigation >= 11 || 
+         detective.intuition >= 13 || 
+         detective.experience >= 8;
+}
+
+/**
  * Get detective description/scouting report
  */
 export function getDetectiveReport(detective: Detective): string {
   const traits: string[] = [];
+  
+  // CRITICAL: Show footage requirement first
+  if (!canSolveWithoutFootage(detective)) {
+    traits.push('⚠️ NEEDS CAMERAS (Invest: ' + detective.investigation + ', Intuit: ' + detective.intuition + ', Exp: ' + detective.experience + 'y)');
+  } else {
+    traits.push('✓ Can solve without cameras');
+  }
   
   if (detective.investigation >= 15) traits.push('Exceptional investigator');
   if (detective.forensics >= 15) traits.push('Forensics expert');
   if (detective.surveillance >= 15) traits.push('Surveillance specialist');
   if (detective.interviewing >= 15) traits.push('Master interviewer');
   if (detective.intuition >= 16) traits.push('Brilliant intuition');
+  if (detective.stamina >= 16) traits.push('Tireless worker (8 cases/turn)');
   
-  if (detective.investigation <= 8) traits.push('Inexperienced');
+  if (detective.investigation <= 8 && detective.intuition <= 10) traits.push('Inexperienced');
+  if (detective.stamina <= 7) traits.push('Limited capacity');
   
   if (detective.experience >= 15) traits.push('Veteran detective');
-  else if (detective.experience <= 3) traits.push('Rookie');
+  else if (detective.experience <= 4) traits.push('Rookie');
   
   if (detective.successRate >= 0.75) traits.push('Proven track record');
-  
-  if (traits.length === 0) traits.push('Solid all-rounder');
   
   return traits.join(' • ');
 }

@@ -46,10 +46,19 @@
         background-color: var(--primary-50) !important;
       }
       
+      &.requires-footage {
+        background-color: var(--warning-50);
+        
+        &:hover {
+          background-color: #fef3c7 !important;
+        }
+      }
+      
       .detective-traits {
         font-size: 0.75rem;
         color: var(--gray-600);
         margin-top: var(--space-1);
+        line-height: 1.5;
       }
     }
     

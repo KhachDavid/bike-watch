@@ -148,6 +148,7 @@ const initialState: GameState = {
   detectives: [],
   detectiveMarketplace: generateDetectiveMarketplace(),
   totalRecovered: 0,
+  totalMoneyRecovered: 0,
   recoveryRate: 0
 };
 
@@ -320,28 +321,60 @@ export default function gameReducer(state = initialState, action: any): GameStat
       const unsolvedThefts = allThefts.filter(t => !t.solved);
       let updatedThefts = [...allThefts];
       let totalNewSolved = 0;
+      let totalBikesRecovered = 0;
+      let totalMoneyRecovered = 0;
       
       state.detectives.forEach(detective => {
         const solvedIds = investigateCases(detective, unsolvedThefts, nextTurn);
         totalNewSolved += solvedIds.length;
         
-        // Mark thefts as solved
+        // Mark thefts as solved and calculate recovery
         updatedThefts = updatedThefts.map(theft => {
           if (solvedIds.includes(theft.id)) {
+            // Case is solved - now determine if bike is recovered
+            // Recovery chance based on:
+            // - Base recovery rate (from footage quality)
+            // - Time elapsed (cases get colder)
+            // - Detective skill
+            
+            const turnsSinceTheft = nextTurn - theft.turnNumber;
+            const timeDecay = Math.max(0.2, 1 - (turnsSinceTheft * 0.2)); // -20% per turn
+            
+            const recoveryChance = theft.recoveryRate * timeDecay;
+            const bikeRecovered = Math.random() < recoveryChance;
+            
+            let moneyRecovered = 0;
+            if (bikeRecovered) {
+              // Full bike value recovered
+              moneyRecovered = theft.bikeValue;
+              totalBikesRecovered++;
+            } else {
+              // Even if bike not recovered, solving case might recover partial value
+              // (insurance, parts, etc.) - 10-30% of value
+              moneyRecovered = Math.round(theft.bikeValue * (0.1 + Math.random() * 0.2));
+            }
+            
+            totalMoneyRecovered += moneyRecovered;
+            
+            // Update detective stats
+            detective.solvedCases++;
+            
             return {
               ...theft,
               solved: true,
               solvedAt: nextTurn,
-              assignedDetective: detective.id
+              assignedDetective: detective.id,
+              bikeRecovered,
+              moneyRecovered
             };
           }
           return theft;
         });
       });
       
-      // 4. Calculate recovery rate
+      // 4. Calculate recovery rate (% of cases with bike recovered)
       const newRecoveryRate = calculateRecoveryRate(updatedThefts);
-      const newTotalRecovered = state.totalRecovered + totalNewSolved;
+      const newTotalRecovered = state.totalRecovered + totalBikesRecovered;
       
       // 5. Update street statistics based on ACTUAL thefts that occurred
       const streetTheftCounts = new Map<number, number>();
@@ -353,48 +386,51 @@ export default function gameReducer(state = initialState, action: any): GameStat
       const recalculatedStreets = state.streets.map(street => {
         const actualThefts = streetTheftCounts.get(street.id) || 0;
         
-        // NATURAL ESCALATION: If no recent investment, thefts increase 2-5% per month
+        // IMPORTANT: theftsPerMonth represents BASE THREAT LEVEL (without deterrence)
+        // It should only change due to natural escalation or long-term trends
+        // actualThefts is AFTER deterrence, so we don't use it to update base rates directly
+        
+        // NATURAL ESCALATION: If no recent investment, base threat increases 2-5% per month
         const hasRecentInvestment = street.investment > 0;
         const escalationMultiplier = hasRecentInvestment ? 1.0 : (1.02 + Math.random() * 0.03);
         
-        // Update theft history with escalation
-        const escalatedThefts = Math.round(street.theftsPerMonth * escalationMultiplier);
-        const newTheftsPerMonth = Math.round((escalatedThefts * 0.7) + (actualThefts * 0.3)); // Moving average
+        // Update BASE threat level (not influenced by single month's deterrence)
+        const newTheftsPerMonth = Math.round(street.theftsPerMonth * escalationMultiplier);
         
-        // Recalculate risks with updated data
+        // Update street with new data
         const updatedStreet = {
           ...street,
-          theftsLastMonth: actualThefts,
-          theftsPerMonth: newTheftsPerMonth
+          theftsLastMonth: actualThefts, // What actually happened (after deterrence)
+          theftsPerMonth: newTheftsPerMonth // Base threat level
         };
         
+        // Calculate PROJECTED risk for next month (includes all current deterrence)
         const newProjectedRisk = calculateRiskPercentage(updatedStreet);
         
-        // Calculate historical risk from what actually happened
+        // Calculate HISTORICAL risk from what actually happened this month
         const monthlyBikes = updatedStreet.bikesPerDay * 30;
-        const baseRate = monthlyBikes > 0 ? (actualThefts / monthlyBikes) * 100 : 0;
-        const lightingMult = 1 + ((10 - updatedStreet.lightingScore) * 0.05);
-        const trafficMult = 
-          updatedStreet.footTraffic === 'Very High' ? 0.75 :
-          updatedStreet.footTraffic === 'High' ? 0.85 :
-          updatedStreet.footTraffic === 'Medium' ? 1.0 : 1.15;
-        const surveillanceMult = 1 - ((updatedStreet.surveillanceScore || 0) / 20);
-        const historicalRisk = baseRate * lightingMult * trafficMult * surveillanceMult;
+        const actualBaseRate = monthlyBikes > 0 ? (actualThefts / monthlyBikes) * 100 : 0;
+        
+        // For historical risk, use a minimum floor to avoid collapse
+        // Even with 0 thefts, there's still underlying risk
+        const minHistoricalRisk = newProjectedRisk * 0.3; // At least 30% of projected risk
+        const calculatedHistoricalRisk = Math.max(actualBaseRate, minHistoricalRisk);
         
         return {
           ...updatedStreet,
           riskPercentage: newProjectedRisk,
-          historicalRisk: Math.round(historicalRisk * 10) / 10
+          historicalRisk: Math.max(1, Math.round(calculatedHistoricalRisk * 10) / 10)
         };
       });
 
       return {
         ...state,
         currentTurn: nextTurn,
-        currentBudget: budgetAfterSalaries,
+        currentBudget: budgetAfterSalaries + totalMoneyRecovered, // Add recovered money!
         streets: recalculatedStreets,
         thefts: updatedThefts,
         totalRecovered: newTotalRecovered,
+        totalMoneyRecovered: state.totalMoneyRecovered + totalMoneyRecovered,
         recoveryRate: newRecoveryRate
       };
 

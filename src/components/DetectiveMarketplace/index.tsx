@@ -22,7 +22,7 @@ import { Close, Search, Refresh, CheckCircle, Cancel, Work, PersonOff } from '@m
 import { useDispatch, useSelector } from 'react-redux';
 import { makeOfferToDetective, refreshMarketplace } from '../../store/actions/game.actions';
 import { RootState } from '../../types';
-import { getDetectiveReport, willAcceptOffer } from '../../services/detectiveMarketplace';
+import { getDetectiveReport, willAcceptOffer, canSolveWithoutFootage } from '../../services/detectiveMarketplace';
 import './styles.scss';
 
 const DetectiveMarketplace: React.FC = () => {
@@ -173,10 +173,22 @@ const DetectiveMarketplace: React.FC = () => {
                     hover
                     selected={selectedDetective === detective.id}
                     onClick={() => handleSelectDetective(detective.id)}
-                    className="detective-row"
+                    className={`detective-row ${!canSolveWithoutFootage(detective) ? 'requires-footage' : ''}`}
                   >
                     <TableCell>
-                      <strong>{detective.name}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <strong>{detective.name}</strong>
+                        {!canSolveWithoutFootage(detective) && (
+                          <Tooltip title="Requires camera footage to solve cases">
+                            <Chip 
+                              label="📹 Required" 
+                              size="small" 
+                              color="warning"
+                              style={{ fontSize: '0.7rem' }}
+                            />
+                          </Tooltip>
+                        )}
+                      </div>
                       <div className="detective-traits">{getDetectiveReport(detective)}</div>
                     </TableCell>
                     <TableCell align="center">{detective.age}</TableCell>
