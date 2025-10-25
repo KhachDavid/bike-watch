@@ -344,13 +344,13 @@ export function generateInitialPosts(turn: number): SocialPost[] {
   
   for (let i = 0; i < postCount; i++) {
     // Initial posts are negative (performance = 0) since coordinator just started
-    posts.push(generateRandomPost(turn, i, 0));
+    posts.push(generateRandomPost(turn, i, 0, undefined));
   }
   
   return posts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 }
 
-function generateRandomPost(turn: number, index: number, performanceMultiplier: number = 0): SocialPost {
+function generateRandomPost(turn: number, index: number, performanceMultiplier: number = 0, streets?: any[]): SocialPost {
   const sentiments: Array<'angry' | 'sarcastic' | 'concerned' | 'frustrated' | 'disappointed' | 'hopeful' | 'brutal' | 'positive'> = 
     ['angry', 'sarcastic', 'concerned', 'frustrated', 'disappointed', 'hopeful', 'brutal', 'positive'];
   
@@ -540,7 +540,7 @@ export function generateNewPosts(turn: number, streets: any[], detectives?: any[
       });
     } else {
       // General posts with dynamic sentiment based on performance
-      posts.push(generateRandomPost(turn, i, performanceMultiplier));
+      posts.push(generateRandomPost(turn, i, performanceMultiplier, streets));
     }
   }
   

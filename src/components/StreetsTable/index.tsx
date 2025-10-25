@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, Tabs, Tab } from '@mui/material';
 import { ArrowUpward, ArrowDownward, Map } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
@@ -33,6 +33,33 @@ const StreetsTable: React.FC = () => {
     // Switch to map view to show the selected street
     setActiveTab(0);
   };
+
+  // Listen for custom events from SocialFeed to switch to map view
+  useEffect(() => {
+    const handleSwitchToMap = (event: CustomEvent) => {
+      const { streetId } = event.detail;
+      if (streetId) {
+        // If already on this street, deselect briefly to trigger change detection
+        if (selectedStreet === streetId) {
+          dispatch(selectStreet(streetId === 1 ? 2 : 1)); // Select a different street temporarily
+          setTimeout(() => {
+            dispatch(selectStreet(streetId)); // Then select the target street
+            setActiveTab(0); // Switch to map view
+          }, 50);
+        } else {
+          // Different street, just select it
+          dispatch(selectStreet(streetId));
+          setActiveTab(0); // Switch to map view
+        }
+      }
+    };
+
+    window.addEventListener('switchToMapView' as any, handleSwitchToMap as any);
+    
+    return () => {
+      window.removeEventListener('switchToMapView' as any, handleSwitchToMap as any);
+    };
+  }, [dispatch, selectedStreet]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {

@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, IconButton, Badge, Avatar } from '@mui/material';
 import { Twitter as TwitterIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../types';
 import { SOCIAL_ACTION_TYPES } from '../../store/reducers/social.reducer';
+import { selectStreet } from '../../store/actions/game.actions';
 import './styles.scss';
 
 const SocialFeed: React.FC = () => {
   const [open, setOpen] = useState(false);
   const posts = useSelector((state: RootState) => state.social.posts);
   const unreadCount = useSelector((state: RootState) => state.social.unreadCount);
+  const streets = useSelector((state: RootState) => state.game.streets);
   const dispatch = useDispatch();
-  const feedRef = useRef<HTMLDivElement>(null);
 
   const handleOpen = () => {
     setOpen(true);
@@ -19,6 +20,19 @@ const SocialFeed: React.FC = () => {
   };
 
   const handleClose = () => setOpen(false);
+
+  const handleNeighborhoodClick = (neighborhoodName: string) => {
+    // Find the street by name
+    const street = streets.find(s => s.name === neighborhoodName);
+    if (street) {
+      // Select the street and trigger map centering
+      dispatch(selectStreet(street.id));
+      // Close the social feed dialog
+      handleClose();
+      // Notify parent to switch to map view - we'll use a custom event
+      window.dispatchEvent(new CustomEvent('switchToMapView', { detail: { streetId: street.id } }));
+    }
+  };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
@@ -79,7 +93,7 @@ const SocialFeed: React.FC = () => {
           </IconButton>
         </DialogTitle>
 
-        <DialogContent className="social-dialog-content" ref={feedRef}>
+        <DialogContent className="social-dialog-content">
           <div className="social-feed">
             {posts.map((post) => (
               <div key={post.id} className="social-post">
@@ -109,7 +123,11 @@ const SocialFeed: React.FC = () => {
                   {post.content}
                 </div>
                 {post.neighborhood && (
-                  <div className="post-tag">
+                  <div 
+                    className="post-tag clickable-neighborhood" 
+                    onClick={() => handleNeighborhoodClick(post.neighborhood!)}
+                    title={`Click to view ${post.neighborhood} on map`}
+                  >
                     📍 {post.neighborhood}
                   </div>
                 )}
