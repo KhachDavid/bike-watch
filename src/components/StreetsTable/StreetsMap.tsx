@@ -9,10 +9,12 @@ interface Street {
   name: string;
   bikesPerDay: number;
   theftsPerMonth: number;
+  theftsLastMonth: number;
   lightingScore: number;
   footTraffic: string;
   investment: number;
   riskPercentage: number;
+  historicalRisk: number;
   latitude?: number;
   longitude?: number;
 }
@@ -43,14 +45,14 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   }));
 
   const getRiskColor = (risk: number) => {
-    if (risk < 30) return '#10b981'; // Green
-    if (risk < 60) return '#f59e0b'; // Orange
+    if (risk < 4) return '#10b981'; // Green
+    if (risk < 7) return '#f59e0b'; // Orange
     return '#ef4444'; // Red
   };
 
   const getRiskLevel = (risk: number) => {
-    if (risk < 30) return 'Low';
-    if (risk < 60) return 'Medium';
+    if (risk < 4) return 'Low';
+    if (risk < 7) return 'Medium';
     return 'High';
   };
 
@@ -108,7 +110,12 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                   </div>
                   
                   <div className="popup-stat">
-                    <span className="stat-label">Thefts/Month</span>
+                    <span className="stat-label">Last Month Thefts</span>
+                    <span className="stat-value">{street.theftsLastMonth}</span>
+                  </div>
+                  
+                  <div className="popup-stat">
+                    <span className="stat-label">Avg Thefts/Mo</span>
                     <span className="stat-value">{street.theftsPerMonth}</span>
                   </div>
                   
@@ -147,15 +154,15 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
         <div className="legend-items">
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#10b981' }}></div>
-            <span>Low (&lt;30%)</span>
+            <span>Low (&lt;4%)</span>
           </div>
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#f59e0b' }}></div>
-            <span>Medium (30-60%)</span>
+            <span>Medium (4-7%)</span>
           </div>
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#ef4444' }}></div>
-            <span>High (&gt;60%)</span>
+            <span>High (&gt;7%)</span>
           </div>
         </div>
       </div>

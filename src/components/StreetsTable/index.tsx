@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Typography, Button, Tabs, Tab } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectStreets, selectSelectedStreet, selectSelectedInvestment } from '../../store/selectors/game.selectors';
+import { selectStreets, selectSelectedStreet, selectSelectedInvestment, selectCurrentTurn } from '../../store/selectors/game.selectors';
 import { selectStreet, applyInvestment } from '../../store/actions/game.actions';
 import StreetsMap from './StreetsMap';
 import './styles.scss';
@@ -11,7 +11,14 @@ const StreetsTable: React.FC = () => {
   const streets = useSelector(selectStreets);
   const selectedStreet = useSelector(selectSelectedStreet);
   const selectedInvestment = useSelector(selectSelectedInvestment);
+  const currentTurn = useSelector(selectCurrentTurn);
   const dispatch = useDispatch();
+  
+  // Calculate current game date
+  const gameStartDate = new Date(2025, 0, 1); // January 2025
+  const currentGameDate = new Date(gameStartDate);
+  currentGameDate.setMonth(currentGameDate.getMonth() + currentTurn - 1);
+  const currentMonth = currentGameDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   const handleSelectStreet = (streetId: number) => {
     dispatch(selectStreet(streetId));
@@ -57,7 +64,7 @@ const StreetsTable: React.FC = () => {
                 <tr>
                   <th>Neighborhood</th>
                   <th>Bikes/Day</th>
-                  <th>Last Month<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>(Dec 2024)</span></th>
+                  <th>Last Month<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>({currentMonth})</span></th>
                   <th>Avg/Mo<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>(2023-24)</span></th>
                   <th>Historical Risk %</th>
                   <th>Lighting</th>

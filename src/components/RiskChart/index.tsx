@@ -14,7 +14,7 @@ import {
 import { Chart } from 'react-chartjs-2';
 import { Typography } from '@mui/material';
 import { useSelector } from 'react-redux';
-import { selectChartData } from '../../store/selectors/game.selectors';
+import { selectChartData, selectCurrentTurn } from '../../store/selectors/game.selectors';
 import './styles.scss';
 
 ChartJS.register(
@@ -31,6 +31,13 @@ ChartJS.register(
 
 const RiskChart: React.FC = () => {
   const chartData = useSelector(selectChartData);
+  const currentTurn = useSelector(selectCurrentTurn);
+
+  // Calculate next month date
+  const gameStartDate = new Date(2025, 0, 1);
+  const nextMonthDate = new Date(gameStartDate);
+  nextMonthDate.setMonth(nextMonthDate.getMonth() + currentTurn);
+  const nextMonth = nextMonthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   // Calculate metrics
   const averageRisk = chartData.riskData.reduce((a, b) => a + b, 0) / chartData.riskData.length;
@@ -215,7 +222,7 @@ const RiskChart: React.FC = () => {
             Risk Analysis - Future Projections
           </Typography>
           <Typography variant="caption" className="data-context">
-            🔮 Predicted risk for upcoming month (Jan 2025+) • Based on historical patterns
+            🔮 Predicted risk for {nextMonth} • Based on current conditions & trends
           </Typography>
         </div>
       </div>

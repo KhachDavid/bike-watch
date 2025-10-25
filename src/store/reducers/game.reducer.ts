@@ -239,14 +239,21 @@ export default function gameReducer(state = initialState, action: any): GameStat
       const budgetIncrease = 10000 + (state.currentTurn * 2000);
       const streetsWithEvents = simulateRandomEvent(state.streets);
       const recalculatedStreets = streetsWithEvents.map(street => {
+        // NATURAL ESCALATION: If no recent investment, thefts increase 2-5% per month
+        // This creates urgency - player MUST act or things get worse
+        const monthsSinceLastInvestment = state.currentTurn - 1; // Simplified: assume investments are recent
+        const hasRecentInvestment = street.investment > 0;
+        const escalationMultiplier = hasRecentInvestment ? 1.0 : (1.02 + Math.random() * 0.03); // 2-5% increase
+        
         // Simulate actual thefts that happened this month
         // Based on current risk (includes lighting, traffic, investments)
         const currentRisk = calculateRiskPercentage(street);
         const monthlyBikes = street.bikesPerDay * 30;
-        const actualThefts = Math.round(monthlyBikes * (currentRisk / 100) * (0.8 + Math.random() * 0.4));
+        const actualThefts = Math.round(monthlyBikes * (currentRisk / 100) * (0.8 + Math.random() * 0.4) * escalationMultiplier);
         
-        // Update theft history
-        const newTheftsPerMonth = Math.round((street.theftsPerMonth * 0.7) + (actualThefts * 0.3)); // Moving average
+        // Update theft history with escalation
+        const escalatedThefts = Math.round(street.theftsPerMonth * escalationMultiplier);
+        const newTheftsPerMonth = Math.round((escalatedThefts * 0.7) + (actualThefts * 0.3)); // Moving average
         
         // Recalculate risks with updated data
         const updatedStreet = {
