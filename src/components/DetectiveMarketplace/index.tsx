@@ -18,7 +18,7 @@ import {
   LinearProgress,
   Tooltip
 } from '@mui/material';
-import { Close, Search, Refresh, CheckCircle, Cancel, Work, PersonOff } from '@mui/icons-material';
+import { Close, Search, Refresh, CheckCircle, Cancel, Work, PersonOff, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { makeOfferToDetective, refreshMarketplace } from '../../store/actions/game.actions';
 import { RootState } from '../../types';
@@ -30,6 +30,8 @@ const DetectiveMarketplace: React.FC = () => {
   const [selectedDetective, setSelectedDetective] = useState<string | null>(null);
   const [offerAmount, setOfferAmount] = useState<number>(0);
   const [filter, setFilter] = useState<'all' | 'available' | 'employed'>('all');
+  const [sortColumn, setSortColumn] = useState<string>('desiredSalary');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
   const dispatch = useDispatch();
   const marketplace = useSelector((state: RootState) => state.game.detectiveMarketplace);
@@ -37,10 +39,34 @@ const DetectiveMarketplace: React.FC = () => {
   const hiredDetectives = useSelector((state: RootState) => state.game.detectives);
   const currentTurn = useSelector((state: RootState) => state.game.currentTurn);
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const filteredDetectives = marketplace.filter(d => {
     if (filter === 'available') return !d.employed;
     if (filter === 'employed') return d.employed;
     return true;
+  }).sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof typeof a];
+    let bVal: any = b[sortColumn as keyof typeof b];
+    
+    // Handle numeric sorting
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    
+    // Handle string sorting
+    const aStr = String(aVal || '');
+    const bStr = String(bVal || '');
+    return sortDirection === 'asc' 
+      ? aStr.localeCompare(bStr)
+      : bStr.localeCompare(aStr);
   });
 
   const handleOpen = () => setOpen(true);
@@ -193,16 +219,69 @@ const DetectiveMarketplace: React.FC = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Name & Personality</TableCell>
-                  <TableCell align="center">Age</TableCell>
-                  <TableCell align="center">Exp</TableCell>
-                  <TableCell align="center">Invest</TableCell>
-                  <TableCell align="center">Forens</TableCell>
-                  <TableCell align="center">Interview</TableCell>
-                  <TableCell align="center">Survey</TableCell>
-                  <TableCell align="center">Intuit</TableCell>
+                  <TableCell 
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('name')}
+                  >
+                    Name & Personality {sortColumn === 'name' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center" 
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('age')}
+                  >
+                    Age {sortColumn === 'age' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('experience')}
+                  >
+                    Exp {sortColumn === 'experience' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('investigation')}
+                  >
+                    Invest {sortColumn === 'investigation' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('forensics')}
+                  >
+                    Forens {sortColumn === 'forensics' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('interviewing')}
+                  >
+                    Interview {sortColumn === 'interviewing' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('surveillance')}
+                  >
+                    Survey {sortColumn === 'surveillance' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('intuition')}
+                  >
+                    Intuit {sortColumn === 'intuition' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell align="right">Desired Salary</TableCell>
+                  <TableCell 
+                    align="right"
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('desiredSalary')}
+                  >
+                    Desired Salary {sortColumn === 'desiredSalary' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />)}
+                  </TableCell>
                   <TableCell align="center">Action</TableCell>
                 </TableRow>
               </TableHead>

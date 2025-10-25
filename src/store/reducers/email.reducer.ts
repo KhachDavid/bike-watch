@@ -16,6 +16,8 @@ Congratulations on your appointment! Yes, we know it's a quirky title, but it's 
 WHAT'S HAPPENING:
 San Francisco has documented 560 bike theft incidents over the past two years. Our bike-loving residents are frustrated, and honestly, so are we. These thefts hurt our community, discourage sustainable transportation, and make people think twice about biking to work or school.
 
+Note that since the announcement of your appointment, thieves may be temporarily deterred, but they will return. You must be prepared to act quickly and decisively.
+
 YOUR NEW JOB:
 You'll manage a dedicated budget to reduce bike thefts across San Francisco neighborhoods. Think of yourself as part urban planner, part data analyst, part community advocate. You'll make investment decisions about lighting, bike parking, cameras, and community programs based on real SFPD crime data.
 

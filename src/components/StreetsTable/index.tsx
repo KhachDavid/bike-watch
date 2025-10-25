@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Typography, Button, Tabs, Tab } from '@mui/material';
+import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectStreets, selectSelectedStreet, selectSelectedInvestment, selectCurrentTurn } from '../../store/selectors/game.selectors';
 import { selectStreet } from '../../store/actions/game.actions';
@@ -8,6 +9,9 @@ import './styles.scss';
 
 const StreetsTable: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0); // Default to first tab (Map View)
+  const [sortColumn, setSortColumn] = useState<string>('historicalRisk');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
   const streets = useSelector(selectStreets);
   const selectedStreet = useSelector(selectSelectedStreet);
   const selectedInvestment = useSelector(selectSelectedInvestment);
@@ -23,6 +27,32 @@ const StreetsTable: React.FC = () => {
   const handleSelectStreet = (streetId: number) => {
     dispatch(selectStreet(streetId));
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedStreets = [...streets].sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof typeof a];
+    let bVal: any = b[sortColumn as keyof typeof b];
+    
+    // Handle numeric sorting
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    
+    // Handle string sorting
+    const aStr = String(aVal || '');
+    const bStr = String(bVal || '');
+    return sortDirection === 'asc' 
+      ? aStr.localeCompare(bStr)
+      : bStr.localeCompare(aStr);
+  });
 
   const getRiskLevel = (risk: number) => {
     // Risk ranges: 2-10% (meaningful gameplay)
@@ -69,18 +99,34 @@ const StreetsTable: React.FC = () => {
             <table className="spreadsheet-table">
               <thead>
                 <tr>
-                  <th>Neighborhood</th>
-                  <th>Bikes/Day</th>
-                  <th>Last Month<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>({currentMonth})</span></th>
-                  <th>Avg/Mo<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>(2023-24)</span></th>
-                  <th>Historical Risk %</th>
-                  <th>Lighting</th>
-                  <th>Traffic</th>
-                  <th>Investment</th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                    Neighborhood {sortColumn === 'name' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('bikesPerDay')}>
+                    Bikes/Day {sortColumn === 'bikesPerDay' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('theftsLastMonth')}>
+                    Last Month<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>({currentMonth})</span> {sortColumn === 'theftsLastMonth' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('theftsPerMonth')}>
+                    Avg/Mo<br/><span style={{fontSize: '0.65rem', fontWeight: 'normal'}}>(2023-24)</span> {sortColumn === 'theftsPerMonth' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('historicalRisk')}>
+                    Historical Risk % {sortColumn === 'historicalRisk' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('lightingScore')}>
+                    Lighting {sortColumn === 'lightingScore' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('footTraffic')}>
+                    Traffic {sortColumn === 'footTraffic' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
+                  <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('investment')}>
+                    Investment {sortColumn === 'investment' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {streets.map((street) => {
+                {sortedStreets.map((street) => {
                   const riskInfo = getRiskLevel(street.historicalRisk);
                   const isSelected = selectedStreet === street.id;
                   
