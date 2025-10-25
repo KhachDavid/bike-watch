@@ -56,3 +56,18 @@ export const selectChartData = createSelector(
     theftData: streets.map(street => street.theftsPerMonth)
   })
 );
+
+export const selectCameras = createSelector(
+  [selectGameState],
+  (game) => game.cameras
+);
+
+export const selectCameraMode = createSelector(
+  [selectGameState],
+  (game) => game.cameraMode
+);
+
+export const selectTotalCameraInvestment = createSelector(
+  [selectCameras],
+  (cameras) => cameras.reduce((sum, camera) => sum + camera.cost, 0)
+);

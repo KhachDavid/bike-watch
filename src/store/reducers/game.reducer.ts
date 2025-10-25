@@ -71,11 +71,34 @@ const FALLBACK_STREETS: Street[] = [
 
 
 const investmentTypes: { [key: string]: InvestmentType } = {
-  lighting: { name: "Street Lighting", cost: 5000, effect: "lighting" },
-  parking: { name: "Secure Parking", cost: 15000, effect: "security" },
-  cameras: { name: "Camera System", cost: 3000, effect: "surveillance" },
-  programs: { name: "Community Programs", cost: 8000, effect: "community" },
-  patrols: { name: "Police Patrols", cost: 12000, effect: "enforcement" }
+  lighting: { name: "Street Lighting", cost: 5000, effect: "lighting", description: "Upgrade street lighting" },
+  parking: { name: "Secure Parking", cost: 15000, effect: "security", description: "Install secure bike parking" },
+  programs: { name: "Community Programs", cost: 8000, effect: "community", description: "Community watch initiatives" },
+  patrols: { name: "Police Patrols", cost: 12000, effect: "enforcement", description: "Increase police presence" },
+  camera_standard: { 
+    name: "Standard Camera", 
+    cost: 2000, 
+    effect: "camera",
+    description: "Basic surveillance camera",
+    cameraQuality: "standard",
+    coverageRadius: 50
+  },
+  camera_hd: { 
+    name: "HD Camera", 
+    cost: 4000, 
+    effect: "camera",
+    description: "High definition camera with night vision",
+    cameraQuality: "hd",
+    coverageRadius: 75
+  },
+  camera_ai: { 
+    name: "AI Camera", 
+    cost: 8000, 
+    effect: "camera",
+    description: "AI-powered camera with theft detection",
+    cameraQuality: "ai-enabled",
+    coverageRadius: 100
+  }
 };
 
 const initialState: GameState = {
@@ -84,7 +107,9 @@ const initialState: GameState = {
   selectedStreet: null,
   selectedInvestment: null,
   streets: initialStreets,
-  investmentTypes
+  investmentTypes,
+  cameras: [],
+  cameraMode: false
 };
 
 const calculateRiskPercentage = (street: Street): number => {
@@ -108,8 +133,13 @@ const calculateRiskPercentage = (street: Street): number => {
   // 4. Investment factor: Each $10k invested reduces risk by ~5%
   const investmentMultiplier = Math.max(0.5, 1 - (street.investment / 10000) * 0.05);
   
+  // 5. Surveillance factor: Cameras provide significant deterrent
+  // Scale: 10 = excellent coverage (50% risk reduction), 0 = no coverage
+  const surveillanceScore = street.surveillanceScore || 0;
+  const surveillanceMultiplier = 1 - (surveillanceScore / 20); // Up to 50% reduction at score 10
+  
   // Calculate final risk with all factors
-  const risk = baseTheftRate * lightingMultiplier * trafficMultiplier * investmentMultiplier;
+  const risk = baseTheftRate * lightingMultiplier * trafficMultiplier * investmentMultiplier * surveillanceMultiplier;
   
   return Math.max(1, Math.min(15, Math.round(risk * 10) / 10));
 };
@@ -290,6 +320,130 @@ export default function gameReducer(state = initialState, action: any): GameStat
 
     case GAME_ACTION_TYPES.RESET_GAME:
       return initialState;
+
+    case GAME_ACTION_TYPES.TOGGLE_CAMERA_MODE:
+      return {
+        ...state,
+        cameraMode: !state.cameraMode,
+        // If turning off camera mode and no camera type selected, clear selection
+        selectedInvestment: state.cameraMode ? null : state.selectedInvestment
+      };
+
+    case GAME_ACTION_TYPES.PLACE_CAMERA:
+      if (!state.selectedInvestment || !state.investmentTypes[state.selectedInvestment]?.cameraQuality) {
+        return state; // No camera type selected
+      }
+
+      const cameraInvestment = state.investmentTypes[state.selectedInvestment];
+      if (state.currentBudget < cameraInvestment.cost) {
+        return state; // Not enough budget
+      }
+
+      const newCamera = {
+        id: `camera-${Date.now()}-${Math.random()}`,
+        latitude: action.payload.latitude,
+        longitude: action.payload.longitude,
+        coverageRadius: cameraInvestment.coverageRadius || 50,
+        quality: cameraInvestment.cameraQuality!,
+        placedAt: state.currentTurn,
+        cost: cameraInvestment.cost
+      };
+
+      // Calculate which streets are covered by this camera
+      // Camera effectiveness decreases with distance
+      const streetsWithCameraUpdate = state.streets.map(street => {
+        if (!street.latitude || !street.longitude) return street;
+        
+        // Calculate distance using Haversine formula (simplified for small distances)
+        const lat1 = newCamera.latitude * Math.PI / 180;
+        const lat2 = street.latitude * Math.PI / 180;
+        const lon1 = newCamera.longitude * Math.PI / 180;
+        const lon2 = street.longitude * Math.PI / 180;
+        const dlat = lat2 - lat1;
+        const dlon = lon2 - lon1;
+        const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+                  Math.cos(lat1) * Math.cos(lat2) *
+                  Math.sin(dlon/2) * Math.sin(dlon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = 6371000 * c; // Distance in meters
+        
+        if (distance <= newCamera.coverageRadius) {
+          // Camera covers this street
+          const currentCameras = street.cameras || [];
+          const newCameras = [...currentCameras, newCamera];
+          
+          // Calculate surveillance score based on camera coverage
+          // AI cameras are more effective
+          const qualityMultiplier = 
+            newCamera.quality === 'ai-enabled' ? 1.5 :
+            newCamera.quality === 'hd' ? 1.2 : 1.0;
+          const surveillanceBoost = Math.min(3, qualityMultiplier);
+          const newSurveillanceScore = Math.min(10, (street.surveillanceScore || 0) + surveillanceBoost);
+          
+          // Reduce thefts based on surveillance
+          const surveillanceMultiplier = 1 - (newSurveillanceScore / 100); // up to 10% reduction
+          const newTheftsPerMonth = Math.round(street.theftsPerMonth * surveillanceMultiplier);
+          
+          const updatedStreet = {
+            ...street,
+            cameras: newCameras,
+            cameraCount: newCameras.length,
+            surveillanceScore: newSurveillanceScore,
+            theftsPerMonth: newTheftsPerMonth
+          };
+          
+          // Recalculate risk with new surveillance
+          updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
+          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          
+          return updatedStreet;
+        }
+        
+        return street;
+      });
+
+      return {
+        ...state,
+        cameras: [...state.cameras, newCamera],
+        currentBudget: state.currentBudget - cameraInvestment.cost,
+        streets: streetsWithCameraUpdate,
+        cameraMode: false, // Exit camera mode after placing
+        selectedInvestment: null
+      };
+
+    case GAME_ACTION_TYPES.REMOVE_CAMERA:
+      const cameraToRemove = state.cameras.find(c => c.id === action.payload);
+      if (!cameraToRemove) return state;
+
+      const camerasAfterRemoval = state.cameras.filter(c => c.id !== action.payload);
+      
+      // Remove camera from affected streets and recalculate
+      const streetsAfterCameraRemoval = state.streets.map(street => {
+        const cameras = street.cameras || [];
+        const updatedCameras = cameras.filter(c => c.id !== action.payload);
+        
+        if (updatedCameras.length !== cameras.length) {
+          // Camera was removed from this street
+          const surveillanceScore = Math.max(0, (street.surveillanceScore || 0) - 2);
+          const updatedStreet = {
+            ...street,
+            cameras: updatedCameras,
+            cameraCount: updatedCameras.length,
+            surveillanceScore
+          };
+          updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
+          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          return updatedStreet;
+        }
+        
+        return street;
+      });
+
+      return {
+        ...state,
+        cameras: camerasAfterRemoval,
+        streets: streetsAfterCameraRemoval
+      };
 
     default:
       return state;

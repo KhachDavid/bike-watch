@@ -10,6 +10,9 @@ export const GAME_ACTION_TYPES = {
   RESET_GAME: 'RESET_GAME',
   UPDATE_STREET_STATS: 'UPDATE_STREET_STATS',
   SIMULATE_RANDOM_EVENTS: 'SIMULATE_RANDOM_EVENTS',
+  TOGGLE_CAMERA_MODE: 'TOGGLE_CAMERA_MODE',
+  PLACE_CAMERA: 'PLACE_CAMERA',
+  REMOVE_CAMERA: 'REMOVE_CAMERA',
 } as const;
 
 export const initializeGame = () => ({
@@ -50,4 +53,18 @@ export const simulateRandomEvents = () => ({
 export const loadStreetsData = (streets: Street[]) => ({
   type: GAME_ACTION_TYPES.LOAD_STREETS_DATA,
   payload: streets,
+});
+
+export const toggleCameraMode = () => ({
+  type: GAME_ACTION_TYPES.TOGGLE_CAMERA_MODE,
+});
+
+export const placeCamera = (latitude: number, longitude: number) => ({
+  type: GAME_ACTION_TYPES.PLACE_CAMERA,
+  payload: { latitude, longitude },
+});
+
+export const removeCamera = (cameraId: string) => ({
+  type: GAME_ACTION_TYPES.REMOVE_CAMERA,
+  payload: cameraId,
 });

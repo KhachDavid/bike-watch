@@ -1,3 +1,13 @@
+export interface Camera {
+  id: string;
+  latitude: number;
+  longitude: number;
+  coverageRadius: number; // in meters
+  quality: 'standard' | 'hd' | 'ai-enabled';
+  placedAt: number; // turn number
+  cost: number;
+}
+
 export interface Street {
   id: number;
   name: string;
@@ -11,12 +21,19 @@ export interface Street {
   historicalRisk: number; // ACTUAL historical risk
   latitude?: number;
   longitude?: number;
+  cameras?: Camera[]; // Cameras covering this street
+  cameraCount?: number;
+  surveillanceScore?: number; // 0-10 based on camera coverage
 }
 
 export interface InvestmentType {
   name: string;
   cost: number;
-  effect: 'lighting' | 'security' | 'surveillance' | 'community' | 'enforcement';
+  effect: 'lighting' | 'security' | 'surveillance' | 'community' | 'enforcement' | 'camera';
+  description?: string;
+  // Camera-specific properties
+  cameraQuality?: 'standard' | 'hd' | 'ai-enabled';
+  coverageRadius?: number;
 }
 
 export interface GameState {
@@ -26,6 +43,8 @@ export interface GameState {
   selectedInvestment: string | null;
   streets: Street[];
   investmentTypes: { [key: string]: InvestmentType };
+  cameras: Camera[]; // All placed cameras
+  cameraMode: boolean; // When true, clicking map places cameras
 }
 
 import { EmailState } from './email.types';

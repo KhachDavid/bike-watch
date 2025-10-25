@@ -1,192 +1,280 @@
+// CSS variables are defined globally in App.scss
+
 .streets-map-container {
   position: relative;
-  height: 600px;
   width: 100%;
-  border-radius: var(--radius-lg);
+  height: 600px;
+  border-radius: var(--radius-md);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .streets-map {
-  height: 100%;
   width: 100%;
+  height: 100%;
   z-index: 1;
+  
+  .leaflet-container {
+    background: #f8f9fa;
+    font-family: var(--font-body);
+  }
+  
+  .leaflet-popup-content-wrapper {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .leaflet-popup-content {
+    margin: 0;
+    min-width: 200px;
+  }
 }
 
-// Map Legend
-.map-legend {
+.camera-mode-controls {
   position: absolute;
-  bottom: var(--space-4);
-  right: var(--space-4);
-  background: white;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
-
-  .legend-title {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin: 0 0 var(--space-2) 0;
-  }
-
-  .legend-items {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: 0.75rem;
-    color: var(--gray-700);
-
-    .legend-color {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-  }
-}
-
-// Leaflet Popup Styles
-.leaflet-popup-content-wrapper {
-  border-radius: var(--radius-lg);
-  padding: 0;
-}
-
-.leaflet-popup-content {
-  margin: 0;
-  min-width: 250px;
-}
-
-.map-popup {
-  padding: var(--space-4);
-
-  .popup-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin: 0 0 var(--space-3) 0;
-  }
-
-  .popup-stats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-
-  .popup-stat {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-2);
-    background: var(--gray-50);
-    border-radius: var(--radius-sm);
-
-    .stat-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--gray-600);
-    }
-
-    .stat-value {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--gray-900);
-
-      &.risk-low {
-        color: var(--success-600);
-      }
-
-      &.risk-medium {
-        color: var(--warning-600);
-      }
-
-      &.risk-high {
-        color: var(--error-600);
-      }
-    }
-  }
-
-  .popup-apply-button {
-    text-transform: none;
-    font-weight: 600;
-    font-size: 0.875rem;
-    padding: var(--space-3);
-    border-radius: var(--radius-lg);
-  }
-}
-
-// Leaflet Tooltip Styles
-.leaflet-tooltip {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
   padding: var(--space-2) var(--space-3);
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  font-family: var(--font-family);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  
+  .camera-mode-button {
+    font-weight: 600;
+    text-transform: none;
+    
+    &.active {
+      animation: pulse 2s ease-in-out infinite;
+    }
+  }
+}
 
-  &::before {
-    border-top-color: var(--gray-200);
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
   }
 }
 
 .map-tooltip {
   font-size: 0.875rem;
-
+  padding: var(--space-1);
+  
   strong {
     display: block;
-    color: var(--gray-900);
-    font-weight: 700;
     margin-bottom: var(--space-1);
+    color: var(--gray-900);
+    font-weight: 600;
   }
-
+  
   .tooltip-risk {
-    font-size: 0.75rem;
-    color: var(--gray-600);
+    font-size: 0.8125rem;
+    color: var(--gray-700);
+  }
+  
+  .tooltip-cameras {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 0.8125rem;
+    color: var(--primary-600);
+    margin-top: var(--space-1);
+    font-weight: 500;
   }
 }
 
-// Responsive Design
-@media (max-width: 768px) {
-  .streets-map-container {
-    height: 500px;
+.map-popup {
+  padding: var(--space-3);
+  
+  .popup-title {
+    margin: 0 0 var(--space-3) 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    border-bottom: 2px solid var(--gray-200);
+    padding-bottom: var(--space-2);
   }
-
-  .map-legend {
-    bottom: var(--space-2);
-    right: var(--space-2);
-    padding: var(--space-3);
-
-    .legend-title {
-      font-size: 0.75rem;
+  
+  .popup-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  
+  .popup-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    
+    .stat-label {
+      color: var(--gray-600);
+      font-weight: 500;
     }
+    
+    .stat-value {
+      font-weight: 600;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      
+      &.risk-low { color: var(--success-600); }
+      &.risk-medium { color: var(--warning-600); }
+      &.risk-high { color: var(--danger-600); }
+    }
+  }
+  
+  .popup-apply-button {
+    margin-top: var(--space-2);
+    text-transform: none;
+    font-weight: 600;
+  }
+}
 
-    .legend-item {
-      font-size: 0.7rem;
-
-      .legend-color {
-        width: 12px;
-        height: 12px;
+.camera-popup {
+  padding: var(--space-2);
+  min-width: 220px;
+  
+  .camera-popup-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--gray-200);
+    
+    h4 {
+      margin: 0;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      flex: 1;
+    }
+    
+    .remove-camera-btn {
+      padding: var(--space-1);
+      
+      &:hover {
+        background: var(--danger-50);
+        color: var(--danger-600);
       }
     }
   }
-
-  .leaflet-popup-content {
-    min-width: 200px;
+  
+  .camera-popup-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8125rem;
+      
+      span {
+        color: var(--gray-600);
+      }
+      
+      strong {
+        color: var(--gray-900);
+        font-weight: 600;
+      }
+    }
   }
+}
 
-  .map-popup {
-    padding: var(--space-3);
+.map-legend {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  max-width: 200px;
+  
+  .legend-title {
+    margin: 0 0 var(--space-3) 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+  
+  .legend-section {
+    margin-bottom: var(--space-3);
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    strong {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: var(--space-2);
+    }
+  }
+  
+  .legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.8125rem;
+    color: var(--gray-700);
+    
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-300);
+    }
+  }
+}
 
-    .popup-title {
-      font-size: 0.875rem;
+@media (max-width: 768px) {
+  .streets-map-container {
+    height: 400px;
+  }
+  
+  .camera-mode-controls {
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    
+    .camera-mode-button {
+      font-size: 0.8125rem;
+      padding: var(--space-1) var(--space-2);
+    }
+  }
+  
+  .map-legend {
+    bottom: var(--space-2);
+    right: var(--space-2);
+    padding: var(--space-2);
+    max-width: 160px;
+    font-size: 0.75rem;
+    
+    .legend-title {
+      font-size: 0.8125rem;
     }
   }
 }
