@@ -2,12 +2,16 @@ import React from 'react';
 import { Typography } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { selectTotalThefts, selectAverageRisk, selectTotalBikes } from '../../store/selectors/game.selectors';
+import { RootState } from '../../types';
 import './styles.scss';
 
 const StatsPanel: React.FC = () => {
   const totalThefts = useSelector(selectTotalThefts);
   const averageRisk = useSelector(selectAverageRisk);
   const totalBikes = useSelector(selectTotalBikes);
+  const recoveryRate = useSelector((state: RootState) => state.game.recoveryRate);
+  const totalRecovered = useSelector((state: RootState) => state.game.totalRecovered);
+  const activeThefts = useSelector((state: RootState) => state.game.thefts.filter(t => !t.solved).length);
 
   const getRiskLevel = (risk: number) => {
     // Risk ranges: 2-10% (meaningful gameplay)
@@ -40,6 +44,18 @@ const StatsPanel: React.FC = () => {
             <div className={`stat-subtitle risk-${riskInfo.color}`}>
               {riskInfo.level} Risk
             </div>
+          </div>
+          
+          <div className="stat-item">
+            <div className="stat-value">{recoveryRate}%</div>
+            <div className="stat-label">Recovery Rate</div>
+            <div className="stat-subtitle">{totalRecovered} bikes recovered</div>
+          </div>
+          
+          <div className="stat-item">
+            <div className="stat-value">{activeThefts}</div>
+            <div className="stat-label">Active Cases</div>
+            <div className="stat-subtitle">Unsolved thefts</div>
           </div>
           
           <div className="stat-item">

@@ -32,10 +32,10 @@
 
 .camera-mode-controls {
   position: absolute;
-  top: var(--space-4);
+  top: var(--space-20);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  z-index: 999;
   display: flex;
   gap: var(--space-2);
   align-items: center;
@@ -250,6 +250,49 @@
   }
 }
 
+.map-layer-controls {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  
+  .layers-label {
+    font-weight: 600;
+  }
+  
+  .layer-toggles {
+    display: flex;
+    gap: var(--space-1);
+    
+    button {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 0.8125rem;
+      padding: var(--space-1) var(--space-2);
+      text-transform: none;
+      
+      span {
+        white-space: nowrap;
+      }
+      
+      &.Mui-selected {
+        background-color: var(--primary-100);
+        color: var(--primary-700);
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .streets-map-container {
     height: 400px;
@@ -263,6 +306,22 @@
     .camera-mode-button {
       font-size: 0.8125rem;
       padding: var(--space-1) var(--space-2);
+    }
+  }
+  
+  .map-layer-controls {
+    flex-wrap: wrap;
+    padding: var(--space-1);
+    
+    .layer-toggles {
+      button {
+        padding: var(--space-1);
+        font-size: 0.75rem;
+        
+        span {
+          display: none;
+        }
+      }
     }
   }
   

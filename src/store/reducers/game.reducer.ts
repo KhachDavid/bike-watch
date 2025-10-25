@@ -1,5 +1,7 @@
 import { Street, InvestmentType, GameState } from '../../types';
 import { GAME_ACTION_TYPES } from '../actions/game.actions';
+import { simulateThefts, investigateCases, calculateRecoveryRate } from '../../services/theftSimulation';
+import { generateDetectiveMarketplace, willAcceptOffer } from '../../services/detectiveMarketplace';
 
 // Start with empty streets - will be loaded dynamically from API
 const initialStreets: Street[] = [];
@@ -71,33 +73,64 @@ const FALLBACK_STREETS: Street[] = [
 
 
 const investmentTypes: { [key: string]: InvestmentType } = {
-  lighting: { name: "Street Lighting", cost: 5000, effect: "lighting", description: "Upgrade street lighting" },
-  parking: { name: "Secure Parking", cost: 15000, effect: "security", description: "Install secure bike parking" },
-  programs: { name: "Community Programs", cost: 8000, effect: "community", description: "Community watch initiatives" },
-  patrols: { name: "Police Patrols", cost: 12000, effect: "enforcement", description: "Increase police presence" },
+  lighting: { 
+    name: "Street Lighting", 
+    cost: 5000, 
+    effect: "lighting", 
+    description: "Upgrade street lighting",
+    canBePlaced: true,
+    effectRadius: 100
+  },
+  parking: { 
+    name: "Secure Parking", 
+    cost: 15000, 
+    effect: "security", 
+    description: "Install secure bike parking",
+    canBePlaced: true,
+    effectRadius: 50
+  },
+  programs: { 
+    name: "Community Programs", 
+    cost: 8000, 
+    effect: "community", 
+    description: "Community watch initiatives",
+    canBePlaced: true,
+    effectRadius: 150
+  },
+  patrols: { 
+    name: "Police Patrols", 
+    cost: 12000, 
+    effect: "enforcement", 
+    description: "Increase police presence",
+    canBePlaced: true,
+    effectRadius: 200
+  },
   camera_standard: { 
     name: "Standard Camera", 
     cost: 2000, 
     effect: "camera",
     description: "Basic surveillance camera",
-    cameraQuality: "standard",
-    coverageRadius: 50
+    canBePlaced: true,
+    effectRadius: 50,
+    cameraQuality: "standard"
   },
   camera_hd: { 
     name: "HD Camera", 
     cost: 4000, 
     effect: "camera",
     description: "High definition camera with night vision",
-    cameraQuality: "hd",
-    coverageRadius: 75
+    canBePlaced: true,
+    effectRadius: 75,
+    cameraQuality: "hd"
   },
   camera_ai: { 
     name: "AI Camera", 
     cost: 8000, 
     effect: "camera",
     description: "AI-powered camera with theft detection",
-    cameraQuality: "ai-enabled",
-    coverageRadius: 100
+    canBePlaced: true,
+    effectRadius: 100,
+    cameraQuality: "ai-enabled"
   }
 };
 
@@ -109,7 +142,13 @@ const initialState: GameState = {
   streets: initialStreets,
   investmentTypes,
   cameras: [],
-  cameraMode: false
+  placedInvestments: [],
+  placementMode: false,
+  thefts: [],
+  detectives: [],
+  detectiveMarketplace: generateDetectiveMarketplace(),
+  totalRecovered: 0,
+  recoveryRate: 0
 };
 
 const calculateRiskPercentage = (street: Street): number => {
@@ -266,20 +305,57 @@ export default function gameReducer(state = initialState, action: any): GameStat
       };
 
     case GAME_ACTION_TYPES.NEXT_TURN:
+      const nextTurn = state.currentTurn + 1;
       const budgetIncrease = 10000 + (state.currentTurn * 2000);
-      const streetsWithEvents = simulateRandomEvent(state.streets);
-      const recalculatedStreets = streetsWithEvents.map(street => {
-        // NATURAL ESCALATION: If no recent investment, thefts increase 2-5% per month
-        // This creates urgency - player MUST act or things get worse
-        const monthsSinceLastInvestment = state.currentTurn - 1; // Simplified: assume investments are recent
-        const hasRecentInvestment = street.investment > 0;
-        const escalationMultiplier = hasRecentInvestment ? 1.0 : (1.02 + Math.random() * 0.03); // 2-5% increase
+      
+      // 1. Deduct detective salaries
+      const detectiveSalaries = state.detectives.reduce((sum, d) => sum + (d.salary || 0), 0);
+      const budgetAfterSalaries = state.currentBudget + budgetIncrease - detectiveSalaries;
+      
+      // 2. Simulate thefts at specific locations (based on ALL placed investments)
+      const newThefts = simulateThefts(state.streets, state.cameras, nextTurn, state.placedInvestments);
+      const allThefts = [...state.thefts, ...newThefts];
+      
+      // 3. Detectives investigate unsolved cases
+      const unsolvedThefts = allThefts.filter(t => !t.solved);
+      let updatedThefts = [...allThefts];
+      let totalNewSolved = 0;
+      
+      state.detectives.forEach(detective => {
+        const solvedIds = investigateCases(detective, unsolvedThefts, nextTurn);
+        totalNewSolved += solvedIds.length;
         
-        // Simulate actual thefts that happened this month
-        // Based on current risk (includes lighting, traffic, investments)
-        const currentRisk = calculateRiskPercentage(street);
-        const monthlyBikes = street.bikesPerDay * 30;
-        const actualThefts = Math.round(monthlyBikes * (currentRisk / 100) * (0.8 + Math.random() * 0.4) * escalationMultiplier);
+        // Mark thefts as solved
+        updatedThefts = updatedThefts.map(theft => {
+          if (solvedIds.includes(theft.id)) {
+            return {
+              ...theft,
+              solved: true,
+              solvedAt: nextTurn,
+              assignedDetective: detective.id
+            };
+          }
+          return theft;
+        });
+      });
+      
+      // 4. Calculate recovery rate
+      const newRecoveryRate = calculateRecoveryRate(updatedThefts);
+      const newTotalRecovered = state.totalRecovered + totalNewSolved;
+      
+      // 5. Update street statistics based on ACTUAL thefts that occurred
+      const streetTheftCounts = new Map<number, number>();
+      newThefts.forEach(theft => {
+        const count = streetTheftCounts.get(theft.streetId) || 0;
+        streetTheftCounts.set(theft.streetId, count + 1);
+      });
+      
+      const recalculatedStreets = state.streets.map(street => {
+        const actualThefts = streetTheftCounts.get(street.id) || 0;
+        
+        // NATURAL ESCALATION: If no recent investment, thefts increase 2-5% per month
+        const hasRecentInvestment = street.investment > 0;
+        const escalationMultiplier = hasRecentInvestment ? 1.0 : (1.02 + Math.random() * 0.03);
         
         // Update theft history with escalation
         const escalatedThefts = Math.round(street.theftsPerMonth * escalationMultiplier);
@@ -295,14 +371,15 @@ export default function gameReducer(state = initialState, action: any): GameStat
         const newProjectedRisk = calculateRiskPercentage(updatedStreet);
         
         // Calculate historical risk from what actually happened
-        const monthlyBikes2 = updatedStreet.bikesPerDay * 30;
-        const baseRate = (actualThefts / monthlyBikes2) * 100;
+        const monthlyBikes = updatedStreet.bikesPerDay * 30;
+        const baseRate = monthlyBikes > 0 ? (actualThefts / monthlyBikes) * 100 : 0;
         const lightingMult = 1 + ((10 - updatedStreet.lightingScore) * 0.05);
         const trafficMult = 
           updatedStreet.footTraffic === 'Very High' ? 0.75 :
           updatedStreet.footTraffic === 'High' ? 0.85 :
           updatedStreet.footTraffic === 'Medium' ? 1.0 : 1.15;
-        const historicalRisk = baseRate * lightingMult * trafficMult;
+        const surveillanceMult = 1 - ((updatedStreet.surveillanceScore || 0) / 20);
+        const historicalRisk = baseRate * lightingMult * trafficMult * surveillanceMult;
         
         return {
           ...updatedStreet,
@@ -313,51 +390,72 @@ export default function gameReducer(state = initialState, action: any): GameStat
 
       return {
         ...state,
-        currentTurn: state.currentTurn + 1,
-        currentBudget: state.currentBudget + budgetIncrease,
-        streets: recalculatedStreets
+        currentTurn: nextTurn,
+        currentBudget: budgetAfterSalaries,
+        streets: recalculatedStreets,
+        thefts: updatedThefts,
+        totalRecovered: newTotalRecovered,
+        recoveryRate: newRecoveryRate
       };
 
     case GAME_ACTION_TYPES.RESET_GAME:
       return initialState;
 
     case GAME_ACTION_TYPES.TOGGLE_CAMERA_MODE:
+    case GAME_ACTION_TYPES.TOGGLE_PLACEMENT_MODE:
       return {
         ...state,
-        cameraMode: !state.cameraMode,
-        // If turning off camera mode and no camera type selected, clear selection
-        selectedInvestment: state.cameraMode ? null : state.selectedInvestment
+        placementMode: !state.placementMode,
+        // If turning off placement mode and no investment selected, clear selection
+        selectedInvestment: state.placementMode ? null : state.selectedInvestment
       };
 
     case GAME_ACTION_TYPES.PLACE_CAMERA:
-      if (!state.selectedInvestment || !state.investmentTypes[state.selectedInvestment]?.cameraQuality) {
-        return state; // No camera type selected
+    case GAME_ACTION_TYPES.PLACE_INVESTMENT:
+      if (!state.selectedInvestment || !state.investmentTypes[state.selectedInvestment]?.canBePlaced) {
+        return state; // No placeable investment selected
       }
 
-      const cameraInvestment = state.investmentTypes[state.selectedInvestment];
-      if (state.currentBudget < cameraInvestment.cost) {
+      const placementInvestment = state.investmentTypes[state.selectedInvestment];
+      if (state.currentBudget < placementInvestment.cost) {
         return state; // Not enough budget
       }
 
-      const newCamera = {
-        id: `camera-${Date.now()}-${Math.random()}`,
+      // Create new placed investment
+      const newPlacement: any = {
+        id: `${placementInvestment.effect}-${Date.now()}-${Math.random()}`,
+        type: state.selectedInvestment,
         latitude: action.payload.latitude,
         longitude: action.payload.longitude,
-        coverageRadius: cameraInvestment.coverageRadius || 50,
-        quality: cameraInvestment.cameraQuality!,
+        effectRadius: placementInvestment.effectRadius || 50,
+        cost: placementInvestment.cost,
         placedAt: state.currentTurn,
-        cost: cameraInvestment.cost
+        // Type-specific data
+        quality: placementInvestment.cameraQuality,
+        lightingLevel: placementInvestment.effect === 'lighting' ? 8 : undefined,
+        patrolFrequency: (placementInvestment.effect === 'enforcement' ? 'medium' : undefined) as 'low' | 'medium' | 'high' | undefined,
+        capacity: placementInvestment.effect === 'security' ? 20 : undefined
       };
 
-      // Calculate which streets are covered by this camera
-      // Camera effectiveness decreases with distance
-      const streetsWithCameraUpdate = state.streets.map(street => {
+      // Legacy: Also add to cameras array if it's a camera
+      const newCamera = placementInvestment.cameraQuality ? {
+        id: newPlacement.id,
+        latitude: action.payload.latitude,
+        longitude: action.payload.longitude,
+        coverageRadius: placementInvestment.effectRadius || 50,
+        quality: placementInvestment.cameraQuality,
+        placedAt: state.currentTurn,
+        cost: placementInvestment.cost
+      } : null;
+
+      // Calculate which streets are affected by this placement
+      const streetsWithUpdate = state.streets.map(street => {
         if (!street.latitude || !street.longitude) return street;
         
-        // Calculate distance using Haversine formula (simplified for small distances)
-        const lat1 = newCamera.latitude * Math.PI / 180;
+        // Calculate distance using Haversine formula
+        const lat1 = newPlacement.latitude * Math.PI / 180;
         const lat2 = street.latitude * Math.PI / 180;
-        const lon1 = newCamera.longitude * Math.PI / 180;
+        const lon1 = newPlacement.longitude * Math.PI / 180;
         const lon2 = street.longitude * Math.PI / 180;
         const dlat = lat2 - lat1;
         const dlon = lon2 - lon1;
@@ -367,32 +465,53 @@ export default function gameReducer(state = initialState, action: any): GameStat
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         const distance = 6371000 * c; // Distance in meters
         
-        if (distance <= newCamera.coverageRadius) {
-          // Camera covers this street
-          const currentCameras = street.cameras || [];
-          const newCameras = [...currentCameras, newCamera];
+        if (distance <= newPlacement.effectRadius) {
+          let updatedStreet = { ...street };
           
-          // Calculate surveillance score based on camera coverage
-          // AI cameras are more effective
-          const qualityMultiplier = 
-            newCamera.quality === 'ai-enabled' ? 1.5 :
-            newCamera.quality === 'hd' ? 1.2 : 1.0;
-          const surveillanceBoost = Math.min(3, qualityMultiplier);
-          const newSurveillanceScore = Math.min(10, (street.surveillanceScore || 0) + surveillanceBoost);
+          // Apply effects based on investment type
+          switch (placementInvestment.effect) {
+            case 'camera':
+              // Camera surveillance
+              if (newCamera) {
+                const currentCameras = street.cameras || [];
+                const newCameras = [...currentCameras, newCamera];
+                const qualityMultiplier = 
+                  newCamera.quality === 'ai-enabled' ? 1.5 :
+                  newCamera.quality === 'hd' ? 1.2 : 1.0;
+                const surveillanceBoost = Math.min(3, qualityMultiplier);
+                updatedStreet.cameras = newCameras;
+                updatedStreet.cameraCount = newCameras.length;
+                updatedStreet.surveillanceScore = Math.min(10, (street.surveillanceScore || 0) + surveillanceBoost);
+              }
+              break;
+              
+            case 'lighting':
+              // Improve lighting score
+              updatedStreet.lightingScore = Math.min(10, updatedStreet.lightingScore + 2);
+              break;
+              
+            case 'security':
+              // Secure parking reduces base thefts
+              updatedStreet.theftsPerMonth = Math.round(updatedStreet.theftsPerMonth * 0.90);
+              break;
+              
+            case 'community':
+              // Community programs increase foot traffic
+              if (updatedStreet.footTraffic === 'Low') updatedStreet.footTraffic = 'Medium';
+              else if (updatedStreet.footTraffic === 'Medium') updatedStreet.footTraffic = 'High';
+              else if (updatedStreet.footTraffic === 'High') updatedStreet.footTraffic = 'Very High';
+              break;
+              
+            case 'enforcement':
+              // Police patrols reduce thefts
+              updatedStreet.theftsPerMonth = Math.round(updatedStreet.theftsPerMonth * 0.85);
+              break;
+          }
           
-          // Reduce thefts based on surveillance
-          const surveillanceMultiplier = 1 - (newSurveillanceScore / 100); // up to 10% reduction
-          const newTheftsPerMonth = Math.round(street.theftsPerMonth * surveillanceMultiplier);
+          // Track total investment
+          updatedStreet.investment = updatedStreet.investment + placementInvestment.cost;
           
-          const updatedStreet = {
-            ...street,
-            cameras: newCameras,
-            cameraCount: newCameras.length,
-            surveillanceScore: newSurveillanceScore,
-            theftsPerMonth: newTheftsPerMonth
-          };
-          
-          // Recalculate risk with new surveillance
+          // Recalculate risk with new factors
           updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
           updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
           
@@ -404,10 +523,11 @@ export default function gameReducer(state = initialState, action: any): GameStat
 
       return {
         ...state,
-        cameras: [...state.cameras, newCamera],
-        currentBudget: state.currentBudget - cameraInvestment.cost,
-        streets: streetsWithCameraUpdate,
-        cameraMode: false, // Exit camera mode after placing
+        cameras: newCamera ? [...state.cameras, newCamera] : state.cameras,
+        placedInvestments: [...state.placedInvestments, newPlacement],
+        currentBudget: state.currentBudget - placementInvestment.cost,
+        streets: streetsWithUpdate,
+        placementMode: false,
         selectedInvestment: null
       };
 
@@ -443,6 +563,106 @@ export default function gameReducer(state = initialState, action: any): GameStat
         ...state,
         cameras: camerasAfterRemoval,
         streets: streetsAfterCameraRemoval
+      };
+
+    case GAME_ACTION_TYPES.REMOVE_INVESTMENT:
+      const investmentToRemove = state.placedInvestments.find(i => i.id === action.payload);
+      if (!investmentToRemove) return state;
+
+      const investmentsAfterRemoval = state.placedInvestments.filter(i => i.id !== action.payload);
+      const camerasAfterInvestmentRemoval = state.cameras.filter(c => c.id !== action.payload);
+      
+      // Recalculate affected streets (reverse the effects)
+      const streetsAfterInvestmentRemoval = state.streets.map(street => {
+        if (!street.latitude || !street.longitude) return street;
+        
+        // Check if street was affected by this investment
+        const lat1 = investmentToRemove.latitude * Math.PI / 180;
+        const lat2 = street.latitude * Math.PI / 180;
+        const lon1 = investmentToRemove.longitude * Math.PI / 180;
+        const lon2 = street.longitude * Math.PI / 180;
+        const dlat = lat2 - lat1;
+        const dlon = lon2 - lon1;
+        const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+                  Math.cos(lat1) * Math.cos(lat2) *
+                  Math.sin(dlon/2) * Math.sin(dlon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = 6371000 * c;
+        
+        if (distance <= investmentToRemove.effectRadius) {
+          let updatedStreet = { ...street };
+          
+          // Reverse effects based on investment type
+          if (investmentToRemove.type.includes('camera')) {
+            const cameras = street.cameras || [];
+            updatedStreet.cameras = cameras.filter(c => c.id !== action.payload);
+            updatedStreet.cameraCount = updatedStreet.cameras.length;
+            updatedStreet.surveillanceScore = Math.max(0, (street.surveillanceScore || 0) - 2);
+          } else if (investmentToRemove.type.includes('lighting')) {
+            updatedStreet.lightingScore = Math.max(1, updatedStreet.lightingScore - 2);
+          }
+          // Note: Some effects (like reduced thefts) can't be easily reversed
+          // They'll normalize over time through the simulation
+          
+          updatedStreet.investment = Math.max(0, updatedStreet.investment - investmentToRemove.cost);
+          updatedStreet.riskPercentage = calculateRiskPercentage(updatedStreet);
+          updatedStreet.historicalRisk = updatedStreet.riskPercentage * 0.95;
+          
+          return updatedStreet;
+        }
+        
+        return street;
+      });
+
+      return {
+        ...state,
+        placedInvestments: investmentsAfterRemoval,
+        cameras: camerasAfterInvestmentRemoval,
+        streets: streetsAfterInvestmentRemoval
+      };
+
+    case GAME_ACTION_TYPES.MAKE_OFFER_TO_DETECTIVE:
+      const { detectiveId, offeredSalary } = action.payload;
+      const detective = state.detectiveMarketplace.find(d => d.id === detectiveId);
+      
+      if (!detective || state.currentBudget < offeredSalary) {
+        return state;
+      }
+
+      // Check if detective accepts offer
+      const offerResult = willAcceptOffer(detective, offeredSalary, 50);
+      
+      if (!offerResult.accepted) {
+        // TODO: Show rejection message to player
+        return state;
+      }
+
+      // Hire the detective
+      const hiredDetective = {
+        ...detective,
+        salary: offeredSalary,
+        hiredAt: state.currentTurn,
+        employed: false, // No longer employed elsewhere
+        currentEmployer: undefined
+      };
+
+      return {
+        ...state,
+        detectives: [...state.detectives, hiredDetective],
+        detectiveMarketplace: state.detectiveMarketplace.filter(d => d.id !== detectiveId),
+        currentBudget: state.currentBudget - offeredSalary
+      };
+
+    case GAME_ACTION_TYPES.FIRE_DETECTIVE:
+      return {
+        ...state,
+        detectives: state.detectives.filter(d => d.id !== action.payload)
+      };
+
+    case GAME_ACTION_TYPES.REFRESH_MARKETPLACE:
+      return {
+        ...state,
+        detectiveMarketplace: generateDetectiveMarketplace()
       };
 
     default:

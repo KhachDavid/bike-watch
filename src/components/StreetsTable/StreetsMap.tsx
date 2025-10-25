@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents } from 'react-leaflet';
-import { Button, IconButton, Chip } from '@mui/material';
-import { Videocam, Close } from '@mui/icons-material';
+import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Videocam, Close, Lightbulb, Lock, Group, LocalPolice, Layers } from '@mui/icons-material';
 import L from 'leaflet';
-import { placeCamera, removeCamera, toggleCameraMode } from '../../store/actions/game.actions';
-import { RootState, Camera } from '../../types';
+import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode } from '../../store/actions/game.actions';
+import { RootState, Camera, PlacedInvestment } from '../../types';
 import 'leaflet/dist/leaflet.css';
 import './map-styles.scss';
 
@@ -35,26 +35,52 @@ interface StreetsMapProps {
   selectedInvestment: string | null;
 }
 
-// Camera icon
-const cameraIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ef4444" width="32" height="32">
-      <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-    </svg>
-  `),
+// Investment type icons
+const createIcon = (svg: string, color: string) => new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(svg.replace('%COLOR%', color)),
   iconSize: [32, 32],
   iconAnchor: [16, 16],
   popupAnchor: [0, -16],
 });
 
+const cameraIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+  </svg>
+`, '#ef4444');
+
+const lightingIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
+  </svg>
+`, '#f59e0b');
+
+const parkingIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
+  </svg>
+`, '#8b5cf6');
+
+const communityIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+  </svg>
+`, '#10b981');
+
+const patrolIcon = createIcon(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%COLOR%" width="32" height="32">
+    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+  </svg>
+`, '#3b82f6');
+
 // Camera placement handler component
 const CameraPlacementHandler: React.FC<{ 
-  cameraMode: boolean;
+  placementMode: boolean;
   onPlaceCamera: (lat: number, lng: number) => void;
-}> = ({ cameraMode, onPlaceCamera }) => {
+}> = ({ placementMode, onPlaceCamera }) => {
   useMapEvents({
     click: (e) => {
-      if (cameraMode) {
+      if (placementMode) {
         onPlaceCamera(e.latlng.lat, e.latlng.lng);
       }
     },
@@ -71,9 +97,13 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
 }) => {
   const dispatch = useDispatch();
   const cameras = useSelector((state: RootState) => state.game.cameras);
-  const cameraMode = useSelector((state: RootState) => state.game.cameraMode);
+  const placedInvestments = useSelector((state: RootState) => state.game.placedInvestments);
+  const placementMode = useSelector((state: RootState) => state.game.placementMode);
   const investmentTypes = useSelector((state: RootState) => state.game.investmentTypes);
   const currentBudget = useSelector((state: RootState) => state.game.currentBudget);
+  
+  // Layer visibility state
+  const [visibleLayers, setVisibleLayers] = useState<string[]>(['camera', 'lighting', 'security', 'community', 'enforcement']);
 
   // San Francisco coordinates
   const center: [number, number] = [37.7749, -122.4194];
@@ -106,13 +136,13 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
 
   const handlePlaceCamera = (lat: number, lng: number) => {
     if (!selectedInvestment) {
-      alert('Please select a camera type first!');
+      alert('Please select an investment type first!');
       return;
     }
 
     const investment = investmentTypes[selectedInvestment];
-    if (!investment?.cameraQuality) {
-      alert('Please select a camera type!');
+    if (!investment?.canBePlaced) {
+      alert('This investment cannot be placed on the map!');
       return;
     }
 
@@ -121,7 +151,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
       return;
     }
 
-    dispatch(placeCamera(lat, lng));
+    dispatch(placeInvestment(lat, lng));
   };
 
   const handleRemoveCamera = (cameraId: string, e: React.MouseEvent) => {
@@ -131,28 +161,61 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
     }
   };
 
-  const handleToggleCameraMode = () => {
-    if (!cameraMode && !selectedInvestment) {
-      alert('Please select a camera type first!');
+  const handleRemoveInvestment = (investmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Remove this investment?')) {
+      dispatch(removeInvestment(investmentId));
+    }
+  };
+
+  const handleTogglePlacementMode = () => {
+    if (!placementMode && !selectedInvestment) {
+      alert('Please select an investment type first!');
       return;
     }
     dispatch(toggleCameraMode());
   };
 
+  const handleLayerToggle = (_event: React.MouseEvent<HTMLElement>, newLayers: string[]) => {
+    setVisibleLayers(newLayers);
+  };
+
+  const getInvestmentIcon = (type: string) => {
+    if (type.includes('camera')) return cameraIcon;
+    if (type.includes('lighting')) return lightingIcon;
+    if (type.includes('parking')) return parkingIcon;
+    if (type.includes('programs')) return communityIcon;
+    if (type.includes('patrols')) return patrolIcon;
+    return cameraIcon;
+  };
+
+  const getInvestmentColor = (type: string) => {
+    if (type.includes('camera')) return '#ef4444';
+    if (type.includes('lighting')) return '#f59e0b';
+    if (type.includes('parking')) return '#8b5cf6';
+    if (type.includes('programs')) return '#10b981';
+    if (type.includes('patrols')) return '#3b82f6';
+    return '#6b7280';
+  };
+
+  const getInvestmentLabel = (type: string) => {
+    const investment = investmentTypes[type];
+    return investment?.name || type;
+  };
+
   return (
     <div className="streets-map-container">
-      {/* Camera Mode Toggle */}
-      {selectedInvestment && investmentTypes[selectedInvestment]?.cameraQuality && (
+      {/* Placement Mode Toggle */}
+      {selectedInvestment && investmentTypes[selectedInvestment]?.canBePlaced && (
         <div className="camera-mode-controls">
           <Button
-            variant={cameraMode ? "contained" : "outlined"}
-            startIcon={<Videocam />}
-            onClick={handleToggleCameraMode}
-            className={`camera-mode-button ${cameraMode ? 'active' : ''}`}
+            variant={placementMode ? "contained" : "outlined"}
+            onClick={handleTogglePlacementMode}
+            className={`camera-mode-button ${placementMode ? 'active' : ''}`}
           >
-            {cameraMode ? 'Click map to place camera' : 'Enable Camera Placement'}
+            {placementMode ? `Click map to place ${investmentTypes[selectedInvestment]?.name}` : `Enable Placement Mode`}
           </Button>
-          {cameraMode && (
+          {placementMode && (
             <Chip 
               label={`${investmentTypes[selectedInvestment]?.name} - $${investmentTypes[selectedInvestment]?.cost.toLocaleString()}`}
               color="primary"
@@ -161,6 +224,39 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
           )}
         </div>
       )}
+
+      {/* Layer Controls */}
+      <div className="map-layer-controls">
+        <Chip icon={<Layers />} label="Layers" size="small" className="layers-label" />
+        <ToggleButtonGroup
+          value={visibleLayers}
+          onChange={handleLayerToggle}
+          aria-label="map layers"
+          size="small"
+          className="layer-toggles"
+        >
+          <ToggleButton value="camera" aria-label="cameras">
+            <Videocam fontSize="small" />
+            <span>Cameras ({cameras.length})</span>
+          </ToggleButton>
+          <ToggleButton value="lighting" aria-label="lighting">
+            <Lightbulb fontSize="small" />
+            <span>Lights ({placedInvestments.filter(i => i.type.includes('lighting')).length})</span>
+          </ToggleButton>
+          <ToggleButton value="security" aria-label="parking">
+            <Lock fontSize="small" />
+            <span>Parking ({placedInvestments.filter(i => i.type.includes('parking')).length})</span>
+          </ToggleButton>
+          <ToggleButton value="community" aria-label="community">
+            <Group fontSize="small" />
+            <span>Community ({placedInvestments.filter(i => i.type.includes('programs')).length})</span>
+          </ToggleButton>
+          <ToggleButton value="enforcement" aria-label="patrols">
+            <LocalPolice fontSize="small" />
+            <span>Patrols ({placedInvestments.filter(i => i.type.includes('patrols')).length})</span>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </div>
 
       <MapContainer
         center={center}
@@ -176,64 +272,100 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
         
         {/* Camera placement handler */}
         <CameraPlacementHandler 
-          cameraMode={cameraMode}
+          placementMode={placementMode}
           onPlaceCamera={handlePlaceCamera}
         />
 
-        {/* Cameras and their coverage areas */}
-        {cameras.map((camera) => (
-          <React.Fragment key={camera.id}>
-            {/* Coverage circle */}
-            <Circle
-              center={[camera.latitude, camera.longitude]}
-              radius={camera.coverageRadius}
-              pathOptions={{
-                fillColor: getCameraColor(camera.quality),
-                fillOpacity: 0.1,
-                color: getCameraColor(camera.quality),
-                weight: 2,
-                opacity: 0.6,
-                dashArray: '5, 5'
-              }}
-            />
-            
-            {/* Camera marker */}
-            <Marker
-              position={[camera.latitude, camera.longitude]}
-              icon={cameraIcon}
-            >
-              <Popup>
-                <div className="camera-popup">
-                  <div className="camera-popup-header">
-                    <Videocam style={{ color: getCameraColor(camera.quality) }} />
-                    <h4>{camera.quality.toUpperCase()} Camera</h4>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleRemoveCamera(camera.id, e)}
-                      className="remove-camera-btn"
-                    >
-                      <Close fontSize="small" />
-                    </IconButton>
+        {/* All Placed Investments with coverage areas */}
+        {placedInvestments.map((investment) => {
+          // Determine if this layer should be visible
+          let layerType = 'camera';
+          if (investment.type.includes('lighting')) layerType = 'lighting';
+          else if (investment.type.includes('parking')) layerType = 'security';
+          else if (investment.type.includes('programs')) layerType = 'community';
+          else if (investment.type.includes('patrols')) layerType = 'enforcement';
+          
+          if (!visibleLayers.includes(layerType)) return null;
+
+          return (
+            <React.Fragment key={investment.id}>
+              {/* Coverage circle */}
+              <Circle
+                center={[investment.latitude, investment.longitude]}
+                radius={investment.effectRadius}
+                pathOptions={{
+                  fillColor: getInvestmentColor(investment.type),
+                  fillOpacity: 0.1,
+                  color: getInvestmentColor(investment.type),
+                  weight: 2,
+                  opacity: 0.6,
+                  dashArray: '5, 5'
+                }}
+              />
+              
+              {/* Investment marker */}
+              <Marker
+                position={[investment.latitude, investment.longitude]}
+                icon={getInvestmentIcon(investment.type)}
+              >
+                <Popup>
+                  <div className="camera-popup">
+                    <div className="camera-popup-header">
+                      <span style={{ color: getInvestmentColor(investment.type) }}>
+                        {getInvestmentLabel(investment.type)}
+                      </span>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleRemoveInvestment(investment.id, e)}
+                        className="remove-camera-btn"
+                      >
+                        <Close fontSize="small" />
+                      </IconButton>
+                    </div>
+                    <div className="camera-popup-details">
+                      <div className="detail-row">
+                        <span>Coverage:</span>
+                        <strong>{investment.effectRadius}m radius</strong>
+                      </div>
+                      <div className="detail-row">
+                        <span>Installed:</span>
+                        <strong>Turn {investment.placedAt}</strong>
+                      </div>
+                      <div className="detail-row">
+                        <span>Cost:</span>
+                        <strong>${investment.cost.toLocaleString()}</strong>
+                      </div>
+                      {investment.quality && (
+                        <div className="detail-row">
+                          <span>Quality:</span>
+                          <strong>{investment.quality.toUpperCase()}</strong>
+                        </div>
+                      )}
+                      {investment.lightingLevel && (
+                        <div className="detail-row">
+                          <span>Lighting Level:</span>
+                          <strong>{investment.lightingLevel}/10</strong>
+                        </div>
+                      )}
+                      {investment.patrolFrequency && (
+                        <div className="detail-row">
+                          <span>Patrol Frequency:</span>
+                          <strong>{investment.patrolFrequency}</strong>
+                        </div>
+                      )}
+                      {investment.capacity && (
+                        <div className="detail-row">
+                          <span>Capacity:</span>
+                          <strong>{investment.capacity} bikes</strong>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="camera-popup-details">
-                    <div className="detail-row">
-                      <span>Coverage:</span>
-                      <strong>{camera.coverageRadius}m radius</strong>
-                    </div>
-                    <div className="detail-row">
-                      <span>Installed:</span>
-                      <strong>Turn {camera.placedAt}</strong>
-                    </div>
-                    <div className="detail-row">
-                      <span>Cost:</span>
-                      <strong>${camera.cost.toLocaleString()}</strong>
-                    </div>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          </React.Fragment>
-        ))}
+                </Popup>
+              </Marker>
+            </React.Fragment>
+          );
+        })}
         
         {/* Street markers */}
         {streetsWithCoords.map((street) => (
@@ -247,7 +379,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
             opacity={1}
             fillOpacity={0.8}
             eventHandlers={{
-              click: () => !cameraMode && onSelectStreet(street.id)
+              click: () => !placementMode && onSelectStreet(street.id)
             }}
           >
             <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
@@ -304,12 +436,12 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
                   </div>
                 </div>
                 
-                {!cameraMode && (
+                {!placementMode && (
                   <Button
                     variant="contained"
                     size="small"
                     fullWidth
-                    disabled={!selectedInvestment || investmentTypes[selectedInvestment]?.effect === 'camera'}
+                    disabled={!selectedInvestment || investmentTypes[selectedInvestment]?.canBePlaced}
                     onClick={(e) => {
                       e.stopPropagation();
                       onApplyInvestment();

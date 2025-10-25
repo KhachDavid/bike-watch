@@ -7,7 +7,7 @@ import StreetsMap from './StreetsMap';
 import './styles.scss';
 
 const StreetsTable: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(0); // Default to first tab (Map View)
   const streets = useSelector(selectStreets);
   const selectedStreet = useSelector(selectSelectedStreet);
   const selectedInvestment = useSelector(selectSelectedInvestment);
@@ -51,13 +51,13 @@ const StreetsTable: React.FC = () => {
           onChange={(_, newValue) => setActiveTab(newValue)}
           className="view-tabs"
         >
-          <Tab label="List View" className="view-tab" />
           <Tab label="Map View" className="view-tab" />
+          <Tab label="List View" className="view-tab" />
         </Tabs>
       </div>
       
       <div className="card-content">
-        {activeTab === 0 ? (
+        {activeTab === 1 ? (
           <div className="streets-spreadsheet">
             <table className="spreadsheet-table">
               <thead>

@@ -62,9 +62,14 @@ export const selectCameras = createSelector(
   (game) => game.cameras
 );
 
+export const selectPlacementMode = createSelector(
+  [selectGameState],
+  (game) => game.placementMode
+);
+
 export const selectCameraMode = createSelector(
   [selectGameState],
-  (game) => game.cameraMode
+  (game) => game.placementMode // Legacy, maps to placementMode
 );
 
 export const selectTotalCameraInvestment = createSelector(

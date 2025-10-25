@@ -1,0 +1,129 @@
+// CSS variables are defined globally in App.scss
+
+.marketplace-trigger {
+  margin-top: var(--space-2);
+}
+
+.detective-marketplace {
+  .marketplace-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--gray-200);
+    
+    .title-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-weight: 600;
+    }
+    
+    .title-actions {
+      display: flex;
+      gap: var(--space-1);
+    }
+  }
+
+  .marketplace-content {
+    padding: var(--space-4);
+  }
+
+  .marketplace-filters {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .detective-table {
+    margin-bottom: var(--space-3);
+    max-height: 500px;
+    overflow-y: auto;
+    
+    .detective-row {
+      cursor: pointer;
+      
+      &.Mui-selected {
+        background-color: var(--primary-50) !important;
+      }
+      
+      .detective-traits {
+        font-size: 0.75rem;
+        color: var(--gray-600);
+        margin-top: var(--space-1);
+      }
+    }
+    
+    th {
+      font-weight: 600;
+      background-color: var(--gray-100);
+      white-space: nowrap;
+    }
+    
+    td {
+      font-size: 0.875rem;
+    }
+  }
+
+  .offer-panel {
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border: 2px solid var(--primary-200);
+    
+    h6 {
+      margin-bottom: var(--space-3);
+      color: var(--gray-900);
+    }
+    
+    .offer-details {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+      
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9375rem;
+        
+        span:first-child {
+          color: var(--gray-600);
+        }
+        
+        strong {
+          color: var(--gray-900);
+        }
+      }
+    }
+    
+    .offer-input {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      
+      .acceptance-indicator {
+        display: flex;
+        justify-content: center;
+      }
+    }
+    
+    .offer-actions {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .detective-marketplace {
+    .detective-table {
+      font-size: 0.8125rem;
+      
+      th, td {
+        padding: var(--space-1);
+      }
+    }
+  }
+}
