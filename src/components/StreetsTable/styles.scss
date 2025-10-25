@@ -167,6 +167,19 @@
         border-radius: var(--radius-md);
       }
     }
+
+    .view-on-map-cell {
+      .view-on-map-icon {
+        color: var(--primary-600);
+        opacity: 0.5;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+    }
+
+    .spreadsheet-row:hover .view-on-map-icon {
+      opacity: 1;
+      transform: scale(1.2);
+    }
   }
 
   .streets-grid {

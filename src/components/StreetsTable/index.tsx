@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Typography, Button, Tabs, Tab } from '@mui/material';
-import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Typography, Tabs, Tab } from '@mui/material';
+import { ArrowUpward, ArrowDownward, Map } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectStreets, selectSelectedStreet, selectSelectedInvestment, selectCurrentTurn } from '../../store/selectors/game.selectors';
 import { selectStreet } from '../../store/actions/game.actions';
@@ -26,6 +26,12 @@ const StreetsTable: React.FC = () => {
 
   const handleSelectStreet = (streetId: number) => {
     dispatch(selectStreet(streetId));
+  };
+
+  const handleSelectStreetFromList = (streetId: number) => {
+    dispatch(selectStreet(streetId));
+    // Switch to map view to show the selected street
+    setActiveTab(0);
   };
 
   const handleSort = (column: string) => {
@@ -94,6 +100,8 @@ const StreetsTable: React.FC = () => {
               color: 'var(--gray-700)'
             }}>
               💡 <strong>To deploy investments:</strong> Switch to <strong>Map View</strong> and use placement mode.
+              <br/>
+              🗺️ <strong>Click any row</strong> to view that neighborhood on the map.
             </div>
             <div className="streets-spreadsheet">
             <table className="spreadsheet-table">
@@ -123,6 +131,9 @@ const StreetsTable: React.FC = () => {
                   <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('investment')}>
                     Investment {sortColumn === 'investment' && (sortDirection === 'asc' ? <ArrowUpward fontSize="small" style={{verticalAlign: 'middle'}} /> : <ArrowDownward fontSize="small" style={{verticalAlign: 'middle'}} />)}
                   </th>
+                  <th style={{ textAlign: 'center' }}>
+                    <Map fontSize="small" style={{verticalAlign: 'middle'}} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -134,7 +145,9 @@ const StreetsTable: React.FC = () => {
                     <tr
                       key={street.id}
                       className={`spreadsheet-row ${isSelected ? 'selected' : ''}`}
-                      onClick={() => handleSelectStreet(street.id)}
+                      onClick={() => handleSelectStreetFromList(street.id)}
+                      title="Click to view on map"
+                      style={{ cursor: 'pointer' }}
                     >
                       <td className="street-name-cell">{street.name}</td>
                       <td className="numeric-cell">{street.bikesPerDay.toLocaleString()}</td>
@@ -148,6 +161,9 @@ const StreetsTable: React.FC = () => {
                       <td className="numeric-cell">{street.lightingScore}/10</td>
                       <td className="traffic-cell">{street.footTraffic}</td>
                       <td className="numeric-cell">${street.investment.toLocaleString()}</td>
+                      <td className="action-cell view-on-map-cell">
+                        <Map fontSize="small" className="view-on-map-icon" />
+                      </td>
                     </tr>
                   );
                 })}

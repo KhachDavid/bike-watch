@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, Circle, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { Button, IconButton, Chip, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
 import { Videocam, Lightbulb, Lock, Group, LocalPolice, Layers, Build, Delete, DeleteOutline } from '@mui/icons-material';
 import L from 'leaflet';
-import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode, repairInvestment, removeDamagedInvestment } from '../../store/actions/game.actions';
+import { placeInvestment, placeCamera, removeCamera, removeInvestment, toggleCameraMode, repairInvestment, removeDamagedInvestment, updateMapView } from '../../store/actions/game.actions';
 import { RootState, Camera, PlacedInvestment } from '../../types';
 import 'leaflet/dist/leaflet.css';
 import './map-styles.scss';
@@ -85,18 +85,91 @@ const patrolIcon = createIcon(`
   </svg>
 `, '#3b82f6');
 
-// Camera placement handler component
-const CameraPlacementHandler: React.FC<{ 
+// Map event handler component
+const MapEventHandler: React.FC<{ 
   placementMode: boolean;
   onPlaceCamera: (lat: number, lng: number) => void;
-}> = ({ placementMode, onPlaceCamera }) => {
+  onMapMove: (center: [number, number], zoom: number) => void;
+}> = ({ placementMode, onPlaceCamera, onMapMove }) => {
+  const map = useMap();
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const isMountedRef = useRef(true);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
+  
   useMapEvents({
     click: (e) => {
       if (placementMode) {
         onPlaceCamera(e.latlng.lat, e.latlng.lng);
       }
     },
+    moveend: () => {
+      // Debounce map position updates to prevent excessive Redux dispatches
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      updateTimeoutRef.current = setTimeout(() => {
+        // Check if component is still mounted before accessing map
+        if (isMountedRef.current && map) {
+          try {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            onMapMove([center.lat, center.lng], zoom);
+          } catch (error) {
+            // Silently catch any errors if map is being destroyed
+            console.debug('Map position update skipped - map may be unmounting');
+          }
+        }
+      }, 300); // Wait 300ms after user stops moving
+    },
   });
+  
+  return null;
+};
+
+// Component to handle centering on selected street
+const MapCenterController: React.FC<{
+  selectedStreet: number | null;
+  streets: Street[];
+  shouldCenter: boolean;
+  onCentered: () => void;
+}> = ({ selectedStreet, streets, shouldCenter, onCentered }) => {
+  const map = useMap();
+  const hasProcessedRef = useRef(false);
+  
+  useEffect(() => {
+    // Only process once per shouldCenter=true trigger
+    if (shouldCenter && selectedStreet !== null && !hasProcessedRef.current) {
+      const street = streets.find(s => s.id === selectedStreet);
+      if (street?.latitude && street?.longitude) {
+        hasProcessedRef.current = true;
+        map.setView([street.latitude, street.longitude], 15, {
+          animate: true,
+          duration: 0.5,
+        });
+        // Reset the flag after animation completes
+        setTimeout(() => {
+          hasProcessedRef.current = false;
+          onCentered();
+        }, 600);
+      }
+    }
+    
+    // Reset flag when shouldCenter becomes false
+    if (!shouldCenter) {
+      hasProcessedRef.current = false;
+    }
+  }, [shouldCenter, selectedStreet]); // Removed streets, map, onCentered to prevent re-runs
+  
   return null;
 };
 
@@ -112,15 +185,29 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   const placementMode = useSelector((state: RootState) => state.game.placementMode);
   const investmentTypes = useSelector((state: RootState) => state.game.investmentTypes);
   const currentBudget = useSelector((state: RootState) => state.game.currentBudget);
+  const mapViewState = useSelector((state: RootState) => state.game.mapViewState);
   
   // Layer visibility state
   const [visibleLayers, setVisibleLayers] = useState<string[]>(['camera', 'lighting', 'security', 'community', 'enforcement']);
   
   // Patrol frequency selection (for police patrols only)
   const [patrolFrequency, setPatrolFrequency] = useState<'low' | 'medium' | 'high'>('medium');
+  
+  // Track if we should center on selected street (set from list view)
+  const [shouldCenterOnStreet, setShouldCenterOnStreet] = useState(false);
+  const prevSelectedStreetRef = useRef<number | null>(null);
+  
+  // Detect when street selection changes (e.g., from list view)
+  useEffect(() => {
+    if (selectedStreet !== null && selectedStreet !== prevSelectedStreetRef.current) {
+      setShouldCenterOnStreet(true);
+    }
+    prevSelectedStreetRef.current = selectedStreet;
+  }, [selectedStreet]);
 
-  // San Francisco coordinates
-  const center: [number, number] = [37.7749, -122.4194];
+  // Use saved map position from Redux
+  const center: [number, number] = mapViewState.center;
+  const zoom = mapViewState.zoom;
 
   // Calculate deployed investments near each street
   const streetsWithCoords = streets.map((street, index) => {
@@ -236,6 +323,14 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
   const handleLayerToggle = (_event: React.MouseEvent<HTMLElement>, newLayers: string[]) => {
     setVisibleLayers(newLayers);
   };
+
+  const handleMapMove = useCallback((newCenter: [number, number], newZoom: number) => {
+    dispatch(updateMapView(newCenter, newZoom));
+  }, [dispatch]);
+
+  const handleCentered = useCallback(() => {
+    setShouldCenterOnStreet(false);
+  }, []);
 
   const getInvestmentIcon = (investment: PlacedInvestment) => {
     if (investment.type.includes('camera')) {
@@ -358,7 +453,7 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
 
       <MapContainer
         center={center}
-        zoom={13}
+        zoom={zoom}
         className="streets-map"
         scrollWheelZoom={true}
       >
@@ -368,10 +463,19 @@ const StreetsMap: React.FC<StreetsMapProps> = ({
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
         
-        {/* Camera placement handler */}
-        <CameraPlacementHandler 
+        {/* Map event handler */}
+        <MapEventHandler 
           placementMode={placementMode}
           onPlaceCamera={handlePlaceCamera}
+          onMapMove={handleMapMove}
+        />
+        
+        {/* Center on selected street when needed */}
+        <MapCenterController
+          selectedStreet={selectedStreet}
+          streets={streets}
+          shouldCenter={shouldCenterOnStreet}
+          onCentered={handleCentered}
         />
 
         {/* All Placed Investments with coverage areas */}

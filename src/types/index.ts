@@ -151,6 +151,11 @@ export interface GameState {
   actionsLocked: boolean; // True when backlash prevents actions
   backlashTurnsRemaining: number; // How many turns until actions unlock
   vandalismAlert: VandalismAlert | null; // Current vandalism notification
+  // Map view state
+  mapViewState: {
+    center: [number, number];
+    zoom: number;
+  };
   // Performance tracking
   yearlyStats: YearlyStats; // Current year's stats
   previousYearStats: YearlyStats | null; // Last year for comparison

@@ -25,6 +25,8 @@ export const GAME_ACTION_TYPES = {
   DISMISS_VANDALISM_ALERT: 'DISMISS_VANDALISM_ALERT',
   REPAIR_INVESTMENT: 'REPAIR_INVESTMENT',
   REMOVE_DAMAGED_INVESTMENT: 'REMOVE_DAMAGED_INVESTMENT',
+  // Map view state
+  UPDATE_MAP_VIEW: 'UPDATE_MAP_VIEW',
 } as const;
 
 export const initializeGame = () => ({
@@ -121,4 +123,9 @@ export const repairInvestment = (investmentId: string) => ({
 export const removeDamagedInvestment = (investmentId: string) => ({
   type: GAME_ACTION_TYPES.REMOVE_DAMAGED_INVESTMENT,
   payload: investmentId,
+});
+
+export const updateMapView = (center: [number, number], zoom: number) => ({
+  type: GAME_ACTION_TYPES.UPDATE_MAP_VIEW,
+  payload: { center, zoom },
 });

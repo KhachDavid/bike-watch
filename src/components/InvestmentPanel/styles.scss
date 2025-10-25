@@ -251,8 +251,12 @@
       }
       
       .option-cost {
-        color: var(--primary-800) !important; // Much darker blue
+        color: var(--gray-900) !important; // Dark gray for maximum contrast
         font-weight: 800 !important; // Extra bold
+        background: rgba(255, 255, 255, 0.9); // White background for cost
+        padding: 2px 8px; // Add some padding
+        border-radius: var(--radius-sm); // Rounded corners
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); // Subtle shadow
       }
     }
     

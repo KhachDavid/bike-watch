@@ -366,3 +366,147 @@ export function calculateRecoveryRate(thefts: TheftIncident[]): number {
   const recovered = thefts.filter(t => t.bikeRecovered).length;
   return Math.round((recovered / thefts.length) * 100);
 }
+
+/**
+ * Recovery breakdown by footage quality and detective performance
+ */
+export interface RecoveryBreakdown {
+  overall: {
+    total: number;
+    recovered: number;
+    rate: number;
+  };
+  byFootage: {
+    noFootage: { total: number; recovered: number; rate: number };
+    standard: { total: number; recovered: number; rate: number };
+    hd: { total: number; recovered: number; rate: number };
+    ai: { total: number; recovered: number; rate: number };
+  };
+  bySolved: {
+    solved: number;
+    unsolved: number;
+    solveRate: number;
+  };
+  trend: {
+    last3Turns: number;
+    improving: boolean;
+  };
+  insights: string[];
+}
+
+export function calculateRecoveryBreakdown(
+  thefts: TheftIncident[], 
+  currentTurn: number,
+  detectiveCount: number
+): RecoveryBreakdown {
+  const total = thefts.length;
+  const recovered = thefts.filter(t => t.bikeRecovered).length;
+  const solved = thefts.filter(t => t.solved).length;
+  const unsolved = thefts.filter(t => !t.solved).length;
+  
+  // By footage quality
+  const noFootageThefts = thefts.filter(t => !t.hasCameraFootage);
+  const standardThefts = thefts.filter(t => t.footageQuality === 'standard');
+  const hdThefts = thefts.filter(t => t.footageQuality === 'hd');
+  const aiThefts = thefts.filter(t => t.footageQuality === 'ai-enabled');
+  
+  const calcRate = (recovered: number, total: number) => 
+    total > 0 ? Math.round((recovered / total) * 100) : 0;
+  
+  // Recent trend (last 3 turns)
+  const recentThefts = thefts.filter(t => t.turnNumber >= currentTurn - 3);
+  const recentRecovered = recentThefts.filter(t => t.bikeRecovered).length;
+  const recentRate = calcRate(recentRecovered, recentThefts.length);
+  const overallRate = calcRate(recovered, total);
+  const improving = recentRate > overallRate;
+  
+  // Generate insights
+  const insights: string[] = [];
+  
+  // Detective insights
+  if (detectiveCount === 0) {
+    insights.push('🚨 No detectives hired - recovery rate will be very low');
+  } else if (detectiveCount < 3) {
+    insights.push(`⚠️ Only ${detectiveCount} detective${detectiveCount === 1 ? '' : 's'} - consider hiring more`);
+  }
+  
+  // Footage quality insights
+  const withFootage = thefts.length - noFootageThefts.length;
+  const footageCoverage = calcRate(withFootage, total);
+  
+  if (footageCoverage < 30) {
+    insights.push('📹 Low camera coverage - deploy more surveillance');
+  } else if (footageCoverage < 60) {
+    insights.push('📹 Moderate camera coverage - expand surveillance network');
+  }
+  
+  // HD/AI camera insights
+  const premiumFootage = hdThefts.length + aiThefts.length;
+  const premiumRate = calcRate(premiumFootage, withFootage);
+  
+  if (withFootage > 0 && premiumRate < 30) {
+    insights.push('⚡ Upgrade to HD/AI cameras for better recovery rates');
+  }
+  
+  // Performance insights
+  const noFootageRecoveryRate = calcRate(
+    noFootageThefts.filter(t => t.bikeRecovered).length,
+    noFootageThefts.length
+  );
+  
+  if (noFootageRecoveryRate > 10 && detectiveCount > 0) {
+    insights.push('✨ Detectives solving cases even without footage!');
+  }
+  
+  // Trend insights
+  if (improving) {
+    insights.push('📈 Recovery rate improving - keep it up!');
+  } else if (recentThefts.length > 5 && recentRate < overallRate - 10) {
+    insights.push('📉 Recent recovery rate declining - investigate why');
+  }
+  
+  // Active case backlog
+  if (unsolved > 20) {
+    insights.push(`🗂️ ${unsolved} unsolved cases - hire more detectives`);
+  }
+  
+  return {
+    overall: {
+      total,
+      recovered,
+      rate: overallRate,
+    },
+    byFootage: {
+      noFootage: {
+        total: noFootageThefts.length,
+        recovered: noFootageThefts.filter(t => t.bikeRecovered).length,
+        rate: calcRate(noFootageThefts.filter(t => t.bikeRecovered).length, noFootageThefts.length),
+      },
+      standard: {
+        total: standardThefts.length,
+        recovered: standardThefts.filter(t => t.bikeRecovered).length,
+        rate: calcRate(standardThefts.filter(t => t.bikeRecovered).length, standardThefts.length),
+      },
+      hd: {
+        total: hdThefts.length,
+        recovered: hdThefts.filter(t => t.bikeRecovered).length,
+        rate: calcRate(hdThefts.filter(t => t.bikeRecovered).length, hdThefts.length),
+      },
+      ai: {
+        total: aiThefts.length,
+        recovered: aiThefts.filter(t => t.bikeRecovered).length,
+        rate: calcRate(aiThefts.filter(t => t.bikeRecovered).length, aiThefts.length),
+      },
+    },
+    bySolved: {
+      solved,
+      unsolved,
+      solveRate: calcRate(solved, total),
+    },
+    trend: {
+      last3Turns: recentRate,
+      improving,
+    },
+    insights,
+  };
+}

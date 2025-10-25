@@ -159,6 +159,11 @@ const initialState: GameState = {
   actionsLocked: false,
   backlashTurnsRemaining: 0,
   vandalismAlert: null,
+  // Map view state
+  mapViewState: {
+    center: [37.7749, -122.4194], // San Francisco default
+    zoom: 13,
+  },
   // Performance tracking
   yearlyStats: {
     year: 2025,
@@ -1001,8 +1006,9 @@ export default function gameReducer(state = initialState, action: any): GameStat
         placedInvestments: [...state.placedInvestments, newPlacement],
         currentBudget: state.currentBudget - placementInvestment.cost,
         streets: streetsWithUpdate,
-        placementMode: false,
-        selectedInvestment: null
+        // Keep placement mode and selection active for continuous placement
+        placementMode: true,
+        selectedInvestment: state.selectedInvestment
       };
 
     case GAME_ACTION_TYPES.REMOVE_CAMERA:
@@ -1199,6 +1205,15 @@ export default function gameReducer(state = initialState, action: any): GameStat
         placedInvestments: investmentsAfterDamageRemoval,
         cameras: state.cameras.filter(cam => cam.id !== action.payload),
         streets: streetsAfterDamageRemoval
+      };
+
+    case GAME_ACTION_TYPES.UPDATE_MAP_VIEW:
+      return {
+        ...state,
+        mapViewState: {
+          center: action.payload.center,
+          zoom: action.payload.zoom,
+        },
       };
 
     default:
