@@ -1,0 +1,336 @@
+.streets-table {
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .data-context {
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .view-tabs {
+    min-height: auto;
+
+    .view-tab {
+      min-height: auto;
+      padding: var(--space-2) var(--space-4);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: none;
+      color: var(--gray-600);
+
+      &.Mui-selected {
+        color: var(--primary-600);
+      }
+    }
+
+    .MuiTabs-indicator {
+      background-color: var(--primary-600);
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+    }
+  }
+
+  // Spreadsheet View
+  .streets-spreadsheet {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+  }
+
+  .spreadsheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    background: white;
+
+    thead {
+      background: var(--gray-100);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+
+      th {
+        padding: var(--space-3) var(--space-4);
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--gray-700);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+        white-space: nowrap;
+      }
+    }
+
+    tbody {
+      .spreadsheet-row {
+        cursor: pointer;
+        transition: background 0.15s ease;
+        border-bottom: 1px solid var(--gray-200);
+
+        &:hover {
+          background: var(--gray-50);
+        }
+
+        &.selected {
+          background: var(--primary-50);
+          border-left: 3px solid var(--primary-600);
+        }
+
+        td {
+          padding: var(--space-3) var(--space-4);
+          color: var(--gray-900);
+          border-bottom: 1px solid var(--gray-200);
+        }
+
+        &:last-child td {
+          border-bottom: none;
+        }
+      }
+    }
+
+    .street-name-cell {
+      font-weight: 600;
+      color: var(--gray-900);
+      min-width: 200px;
+    }
+
+    .numeric-cell {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+      font-size: 0.875rem;
+
+      &.theft-count {
+        font-weight: 700;
+        color: var(--primary-700);
+        background: var(--primary-50);
+      }
+    }
+
+    .risk-cell {
+      text-align: center;
+
+      .risk-value {
+        display: inline-block;
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+        font-weight: 700;
+        font-size: 0.875rem;
+
+        &.risk-low {
+          background: var(--success-50);
+          color: var(--success-700);
+        }
+
+        &.risk-medium {
+          background: var(--warning-50);
+          color: var(--warning-700);
+        }
+
+        &.risk-high {
+          background: var(--error-50);
+          color: var(--error-700);
+        }
+      }
+    }
+
+    .traffic-cell {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--gray-600);
+    }
+
+    .action-cell {
+      text-align: center;
+
+      .apply-button {
+        text-transform: none;
+        font-weight: 600;
+        font-size: 0.75rem;
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-md);
+      }
+    }
+  }
+
+  .streets-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .street-card {
+    padding: var(--space-4);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: var(--primary-300);
+      box-shadow: var(--shadow-md);
+    }
+
+    &.selected {
+      border-color: var(--primary-500);
+      background: var(--primary-50);
+    }
+
+    .street-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-3);
+
+      .street-name {
+        font-weight: 600;
+        color: var(--gray-900);
+        margin: 0;
+      }
+
+      .risk-badge {
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+
+        &.risk-low {
+          background: var(--success-50);
+          color: var(--success-700);
+        }
+
+        &.risk-medium {
+          background: var(--warning-50);
+          color: var(--warning-700);
+        }
+
+        &.risk-high {
+          background: var(--error-50);
+          color: var(--error-700);
+        }
+      }
+    }
+
+    .street-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+
+      .stat {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: var(--gray-600);
+          font-weight: 500;
+        }
+
+        .stat-value {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--gray-900);
+        }
+      }
+    }
+
+    .street-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--gray-200);
+
+      .investment-info {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+
+        .investment-label {
+          font-size: 0.75rem;
+          color: var(--gray-600);
+          font-weight: 500;
+        }
+
+        .investment-value {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--gray-900);
+        }
+      }
+
+      .apply-button {
+        text-transform: none;
+        font-weight: 600;
+        font-size: 0.75rem;
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--primary-500);
+        background: var(--primary-500);
+        color: white;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--primary-600);
+          border-color: var(--primary-600);
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-md);
+        }
+
+        &:disabled {
+          background: var(--gray-300);
+          border-color: var(--gray-300);
+          color: var(--gray-500);
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+      }
+    }
+  }
+}
+
+// Responsive Design for Spreadsheet
+@media (max-width: 768px) {
+  .streets-table {
+    .spreadsheet-table {
+      font-size: 0.75rem;
+
+      thead th {
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.7rem;
+      }
+
+      tbody td {
+        padding: var(--space-2) var(--space-3);
+      }
+
+      .street-name-cell {
+        min-width: 150px;
+      }
+
+      .apply-button {
+        font-size: 0.7rem;
+        padding: var(--space-1) var(--space-2);
+      }
+    }
+  }
+}

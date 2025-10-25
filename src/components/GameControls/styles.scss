@@ -1,0 +1,144 @@
+.game-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.simulation-section {
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-3);
+    display: block;
+  }
+}
+
+// Best Practice: Primary Action Button
+.simulate-button {
+  all: unset; // Reset all browser defaults
+  display: block;
+  width: 100%;
+  padding: var(--space-5) var(--space-6);
+  box-sizing: border-box;
+  
+  // Color: Green with high contrast white text (WCAG AA compliant)
+  background-color: #10b981; // Green 500
+  color: #ffffff;
+  
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  
+  // Smooth transitions
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  
+  // Typography
+  font-family: var(--font-family);
+  text-align: left;
+
+  // Hover: Darken slightly (best practice - 10% darker)
+  &:hover {
+    background-color: #059669; // Green 600
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  // Active: Slight press down
+  &:active {
+    background-color: #047857; // Green 700
+    transform: translateY(0);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  // Focus: Accessibility
+  &:focus-visible {
+    outline: 3px solid #6ee7b7; // Green 300
+    outline-offset: 2px;
+  }
+
+  .button-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .button-icon {
+    font-size: 1.5rem;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .button-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .button-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+
+  .button-sublabel {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.2;
+  }
+}
+
+// Best Practice: Secondary/Destructive Action Button
+.reset-button {
+  all: unset; // Reset all browser defaults
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  box-sizing: border-box;
+  
+  // Color: Subtle gray with red on hover
+  background-color: transparent;
+  color: #6b7280; // Gray 500
+  
+  border: 2px solid #d1d5db; // Gray 300
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  
+  // Smooth transitions
+  transition: all 0.2s ease;
+  
+  // Typography
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+
+  // Hover: Show destructive intent
+  &:hover {
+    background-color: #fef2f2; // Red 50
+    border-color: #ef4444; // Red 500
+    color: #dc2626; // Red 600
+  }
+
+  // Active: Slight scale down
+  &:active {
+    transform: scale(0.98);
+  }
+
+  // Focus: Accessibility
+  &:focus-visible {
+    outline: 3px solid #bfdbfe; // Blue 200
+    outline-offset: 2px;
+  }
+}
